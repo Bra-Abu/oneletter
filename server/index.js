@@ -3,9 +3,13 @@ const http = require('http');
 const { Server } = require('socket.io');
 const { v4: uuidv4 } = require('uuid');
 const path = require('path');
-const { loadWords } = require('./words');
+const { loadWords, getNeighbours } = require('./words');
 const { GameRoom, TURN_MS } = require('./game');
 const { saveMatch } = require('./db');
+
+const BOT_ID   = '__BOT__';
+const BOT_NAME = 'OneBot 🤖';
+const BOT_DELAY_MS = 1500; // thinking pause before bot plays
 
 loadWords();
 
@@ -34,6 +38,8 @@ function startTurn(room) {
     const current = room.getCurrentPlayer();
     finishGame(room, current.id, 'timeout');
   }, TURN_MS);
+
+  scheduleBotMove(room);
 }
 
 // Single authoritative path for ending a game: mutate state, persist, broadcast.
@@ -47,6 +53,38 @@ function finishGame(room, loserId, reason) {
 
 function scheduleCleanup(roomId) {
   setTimeout(() => games.delete(roomId), 5 * 60 * 1000);
+}
+
+// Schedule a bot move after BOT_DELAY_MS if it's the bot's turn
+function scheduleBotMove(room) {
+  if (room.state !== 'playing') return;
+  if (room.getCurrentPlayer().id !== BOT_ID) return;
+
+  setTimeout(() => {
+    if (room.state !== 'playing') return;
+    if (room.getCurrentPlayer().id !== BOT_ID) return;
+
+    const played = new Set(room.wordHistory.map(h => h.word));
+    const neighbours = getNeighbours(room.currentWord, played);
+
+    if (neighbours.length === 0) {
+      // Bot has no valid move — it loses
+      finishGame(room, BOT_ID, 'timeout');
+      return;
+    }
+
+    // Pick a random neighbour
+    const pick = neighbours[Math.floor(Math.random() * neighbours.length)];
+    const result = room.makeMove(BOT_ID, pick);
+    if (result.error) {
+      finishGame(room, BOT_ID, 'timeout');
+      return;
+    }
+
+    startTurn(room);
+    io.to(room.roomId).emit('game_update', room.getState());
+    scheduleBotMove(room); // recurse in case next turn is also bot (shouldn't happen in 1v1)
+  }, BOT_DELAY_MS);
 }
 
 // ── Socket handlers ────────────────────────────────────────────────────────
@@ -83,6 +121,24 @@ io.on('connection', (socket) => {
       queue.push({ socketId: socket.id, name });
       socket.emit('waiting');
     }
+  });
+
+  // ── Solo / bot game ────────────────────────────────────────────────────
+  socket.on('play_bot', ({ name }) => {
+    name = (name || 'Anonymous').slice(0, 20);
+    const roomId = uuidv4().slice(0, 8).toUpperCase();
+
+    // Player is index 0 (goes first), bot is index 1
+    const room = new GameRoom(roomId, socket.id, name);
+    room.addPlayer(BOT_ID, BOT_NAME);
+    games.set(roomId, room);
+
+    socket.join(roomId);
+    socket.data.roomId = roomId;
+
+    room.start();
+    startTurn(room);
+    socket.emit('game_start', room.getState());
   });
 
   socket.on('cancel_queue', () => {

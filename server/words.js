@@ -37,4 +37,21 @@ function getDiff(a, b) {
   return diff;
 }
 
-module.exports = { loadWords, isValidWord, isOneLetterDiff, getDiff };
+// Return all valid one-letter neighbours of `word` not already in `played`
+function getNeighbours(word, played = new Set()) {
+  const w = word.toLowerCase();
+  const results = [];
+  const alpha = 'abcdefghijklmnopqrstuvwxyz';
+  for (let i = 0; i < w.length; i++) {
+    for (const ch of alpha) {
+      if (ch === w[i]) continue;
+      const candidate = w.slice(0, i) + ch + w.slice(i + 1);
+      if (WORDS.has(candidate) && !played.has(candidate)) {
+        results.push(candidate);
+      }
+    }
+  }
+  return results;
+}
+
+module.exports = { loadWords, isValidWord, isOneLetterDiff, getDiff, getNeighbours };
