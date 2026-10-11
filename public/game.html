@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
   <title>OneLetter</title>
   <link rel="stylesheet" href="/css/style.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -10,105 +10,117 @@
 </head>
 <body class="game-page">
 
-  <!-- TOP BAR -->
-  <header class="game-header">
-    <a href="/" class="back-link">← OneLetter</a>
-    <div class="player-chips" id="playerChips">
-      <div class="player-chip" id="chip0">
-        <span class="chip-dot"></span>
-        <span class="chip-name">—</span>
-      </div>
-      <div class="vs-label">VS</div>
-      <div class="player-chip right" id="chip1">
-        <span class="chip-name">—</span>
-        <span class="chip-dot"></span>
+  <!-- ── TOP BAR ─────────────────────────────────────────────────────────── -->
+  <header class="game-header" id="gameHeader">
+
+    <!-- Player 0 (left) -->
+    <div class="player-block" id="playerBlock0">
+      <div class="avatar" id="avatar0">?</div>
+      <div class="player-meta">
+        <div class="player-name" id="pname0">—</div>
+        <div class="player-score" id="pscore0">0 W</div>
       </div>
     </div>
-    <button class="btn-give-up" id="btnGiveUp">Give Up</button>
+
+    <!-- Timer (centre) -->
+    <div class="timer-centre">
+      <div class="timer-ring-wrap">
+        <svg viewBox="0 0 72 72">
+          <circle class="ring-bg" cx="36" cy="36" r="30"/>
+          <circle class="ring-fg" id="timerRing" cx="36" cy="36" r="30"
+                  stroke-dasharray="188.5" stroke-dashoffset="0"/>
+        </svg>
+        <span class="timer-num" id="timerText">10</span>
+      </div>
+      <div class="turn-badge" id="turnLabel">Your turn</div>
+    </div>
+
+    <!-- Player 1 (right) -->
+    <div class="player-block right" id="playerBlock1">
+      <div class="player-meta right">
+        <div class="player-name" id="pname1">—</div>
+        <div class="player-score" id="pscore1">0 W</div>
+      </div>
+      <div class="avatar p1" id="avatar1">?</div>
+    </div>
+
   </header>
 
-  <!-- CONNECTING STATE -->
-  <div id="connectingState" class="game-state-screen">
+  <!-- ── CONNECTING / WAITING ────────────────────────────────────────────── -->
+  <div id="connectingState" class="overlay-state">
     <div class="spinner"></div>
     <p>Connecting…</p>
   </div>
 
-  <!-- WAITING STATE (private game host waiting) -->
-  <div id="waitingState" class="game-state-screen hidden">
+  <div id="waitingState" class="overlay-state hidden">
     <div class="spinner"></div>
-    <p>Waiting for your opponent to join…</p>
-    <div class="room-code-display small" id="gameRoomCodeDisplay">—</div>
+    <p>Waiting for opponent to join…</p>
+    <div class="room-code-display" id="gameRoomCodeDisplay">—</div>
     <div class="link-row">
       <input id="gameLinkInput" class="input-field small" readonly />
       <button class="btn-copy" id="btnGameCopyLink">Copy</button>
     </div>
   </div>
 
-  <!-- MAIN GAME -->
+  <!-- ── PLAYING AREA ────────────────────────────────────────────────────── -->
   <main id="gameMain" class="game-main hidden">
 
-    <!-- TIMER -->
-    <div class="timer-wrap">
-      <div class="timer-ring">
-        <svg viewBox="0 0 60 60">
-          <circle class="ring-bg" cx="30" cy="30" r="26" />
-          <circle class="ring-fg" id="timerRing" cx="30" cy="30" r="26"
-                  stroke-dasharray="163.36" stroke-dashoffset="0" />
-        </svg>
-        <span class="timer-text" id="timerText">30</span>
-      </div>
-      <div class="turn-label" id="turnLabel">Your turn</div>
-    </div>
-
-    <!-- CURRENT WORD -->
-    <div class="word-display-wrap">
-      <div class="word-label">Current word — <span class="tap-hint">tap a letter to change it</span></div>
+    <!-- Word hero -->
+    <section class="word-hero">
+      <p class="word-hero-label">Change one letter</p>
       <div class="word-tiles" id="wordTiles"></div>
-    </div>
+    </section>
 
-    <!-- INPUT AREA -->
-    <div class="input-area" id="inputArea">
-      <div class="input-wrap">
-        <input id="wordInput" class="word-input" type="text"
-               maxlength="8" placeholder="Type your word…"
-               autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" />
-        <button class="submit-btn" id="submitBtn" disabled>→</button>
+    <!-- Input zone -->
+    <section class="input-zone" id="inputZone">
+      <div class="input-row">
+        <input id="wordInput" class="word-input"
+               type="text" maxlength="8"
+               placeholder="Type your word…"
+               autocomplete="off" autocorrect="off"
+               autocapitalize="none" spellcheck="false" />
       </div>
-      <div class="diff-tiles" id="diffTiles"></div>
-      <div class="input-hint" id="inputHint"></div>
-    </div>
+      <div class="diff-strip" id="diffTiles"></div>
+      <p class="input-hint" id="inputHint"></p>
+      <button class="submit-btn" id="submitBtn" disabled>Submit</button>
+    </section>
 
-    <!-- Sound toggle -->
-    <button class="sound-toggle" id="soundToggle" title="Toggle sounds">🔊</button>
+    <!-- Opponent thinking -->
+    <p class="thinking-label hidden" id="opponentThinking">
+      Opponent is thinking<span class="dots"></span>
+    </p>
 
-    <div class="opponent-thinking hidden" id="opponentThinking">
-      <span>Opponent is thinking</span><span class="dots">...</span>
-    </div>
-
-    <!-- WORD HISTORY -->
-    <div class="history-wrap">
-      <div class="history-label">Word chain</div>
+    <!-- Move history -->
+    <section class="history-section">
       <div class="history-chain" id="historyChain"></div>
-    </div>
+    </section>
 
   </main>
 
-  <!-- GAME OVER SCREEN -->
-  <div id="gameOverScreen" class="game-over-screen hidden">
-    <div class="game-over-box">
-      <div class="result-icon" id="resultIcon">🏆</div>
-      <h2 class="result-title" id="resultTitle">You Win!</h2>
-      <p class="result-reason" id="resultReason"></p>
-      <div class="stats-row" id="statsRow"></div>
+  <!-- ── GAME CONTROLS (subtle, bottom corner) ─────────────────────────── -->
+  <div class="game-controls">
+    <button class="ctrl-btn" id="btnGiveUp" title="Give up">🏳</button>
+    <button class="ctrl-btn" id="soundToggle" title="Toggle sound">🔊</button>
+    <a href="/" class="ctrl-btn" title="Home">⌂</a>
+  </div>
 
-      <div class="final-chain-wrap">
-        <div class="history-label">Word chain played</div>
-        <div class="history-chain" id="finalChain"></div>
+  <!-- ── GAME OVER ──────────────────────────────────────────────────────── -->
+  <div id="gameOverScreen" class="go-screen hidden">
+    <div class="go-box">
+      <div class="go-icon" id="resultIcon">🏆</div>
+      <h2 class="go-title" id="resultTitle">You Win!</h2>
+      <p class="go-reason" id="resultReason"></p>
+
+      <div class="go-stats" id="statsRow"></div>
+
+      <div class="go-chain-wrap">
+        <p class="go-chain-label">Word chain</p>
+        <div class="history-chain go-chain" id="finalChain"></div>
       </div>
 
-      <div class="game-over-actions">
+      <div class="go-actions">
         <button class="btn-primary" id="btnRematch">Rematch</button>
-        <button class="btn-ghost" id="btnShareResult">Share Result</button>
+        <button class="btn-ghost"   id="btnShareResult">Share</button>
         <a href="/" class="btn-ghost">Home</a>
       </div>
       <p class="rematch-status hidden" id="rematchStatus"></p>

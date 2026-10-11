@@ -20,10 +20,11 @@ class GameRoom {
   constructor(roomId, p1Id, p1Name) {
     this.roomId   = roomId;
     this.players  = [{ id: p1Id, name: p1Name }];
-    this.isBot    = false; // set to true for solo games
+    this.isBot    = false;
+    this.scores   = [0, 0]; // session wins per player index, persist across rematches
     this._initMatchState();
-    this.state      = 'waiting';
-    this.createdAt  = Date.now();
+    this.state    = 'waiting';
+    this.createdAt = Date.now();
   }
 
   // Shared init for both first start and rematch
@@ -40,7 +41,7 @@ class GameRoom {
     this.endReason           = null;
     this.startedAt           = null;
     this.busy                = false;
-    this.rematchReady        = new Set(); // player IDs who clicked Rematch
+    this.rematchReady        = new Set();
   }
 
   addPlayer(p2Id, p2Name) {
@@ -106,6 +107,9 @@ class GameRoom {
     this.winner     = winnerPlayer?.id   || null;
     this.endReason  = reason;
     if (this.timerHandle) clearTimeout(this.timerHandle);
+    // Track session score
+    const winnerIdx = this.players.findIndex(p => p.id === this.winner);
+    if (winnerIdx >= 0) this.scores[winnerIdx]++;
     return {
       winnerName:  this.winnerName,
       loserName:   this.loserName,
@@ -125,6 +129,7 @@ class GameRoom {
       state:           this.state,
       timerEndsAt:     this.timerEndsAt,
       isBot:           this.isBot,
+      scores:          this.scores,
     };
   }
 }

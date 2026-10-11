@@ -1,6 +1,6 @@
 const socket = io();
 
-// ── Player identity ────────────────────────────────────────────────────────
+// ── Identity ───────────────────────────────────────────────────────────────
 function getToken() {
   let t = localStorage.getItem('ol_token');
   if (!t) { t = crypto.randomUUID(); localStorage.setItem('ol_token', t); }
@@ -11,98 +11,108 @@ const savedName = sessionStorage.getItem('ol_name') ||
   (() => { try { return localStorage.getItem('ol_name'); } catch { return null; } })() || 'Anonymous';
 
 // ── State ──────────────────────────────────────────────────────────────────
-let myId = null;
-let myPlayerIndex = -1;
-let gameState = null;
-let timerInterval = null;
-let selectedTileIdx = -1;
-let soundEnabled = (() => { try { return localStorage.getItem('ol_sound') !== 'off'; } catch { return true; } })();
+let myId             = null;
+let myPlayerIndex    = -1;
+let gameState        = null;
+let timerInterval    = null;
+let selectedTileIdx  = -1;
+let changedFlashIdx  = -1;    // index of last changed letter (shown briefly)
+let flashTimer       = null;
+let lastTickSec      = -1;
+let soundEnabled     = (() => { try { return localStorage.getItem('ol_sound') !== 'off'; } catch { return true; } })();
 
-const TURN_SECS = 10;
-const RING_CIRCUMFERENCE = 163.36;
+const TURN_SECS        = 10;
+const RING_CIRC        = 188.5; // 2π × 30
+const BOT_NAME         = 'OneBot 🤖';
 
-// ── Sound engine (Web Audio API, no files) ─────────────────────────────────
+// ── Audio ──────────────────────────────────────────────────────────────────
 let audioCtx = null;
-function getAudio() {
+function audio() {
   if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   return audioCtx;
 }
-function beep(freq, dur, type = 'sine', vol = 0.25) {
+function beep(freq, dur, type = 'sine', vol = 0.22) {
   if (!soundEnabled) return;
   try {
-    const ctx = getAudio();
-    const osc = ctx.createOscillator();
-    const g   = ctx.createGain();
-    osc.connect(g); g.connect(ctx.destination);
-    osc.type = type; osc.frequency.value = freq;
+    const ctx = audio();
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.connect(g); g.connect(ctx.destination);
+    o.type = type; o.frequency.value = freq;
     g.gain.setValueAtTime(vol, ctx.currentTime);
     g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur);
-    osc.start(ctx.currentTime); osc.stop(ctx.currentTime + dur);
+    o.start(); o.stop(ctx.currentTime + dur);
   } catch {}
 }
 const SFX = {
-  tileSelect: () => beep(700, 0.06, 'sine', 0.15),
-  goodWord:   () => beep(880, 0.08, 'sine', 0.2),
-  badWord:    () => beep(220, 0.12, 'square', 0.15),
-  move:       () => { beep(660, 0.07); setTimeout(() => beep(880, 0.07), 80); },
-  tick:       () => beep(440, 0.05, 'sine', 0.1),
-  win:        () => { [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => beep(f, 0.18), i * 100)); },
-  lose:       () => { [440, 370, 294].forEach((f, i) => setTimeout(() => beep(f, 0.22), i * 120)); },
+  tap:    () => beep(700, 0.055, 'sine', 0.13),
+  valid:  () => beep(880, 0.08,  'sine', 0.18),
+  bad:    () => beep(220, 0.13,  'square', 0.13),
+  move:   () => { beep(660, 0.07); setTimeout(() => beep(900, 0.07), 75); },
+  tick:   () => beep(440, 0.04,  'sine', 0.08),
+  win:    () => [523,659,784,1047].forEach((f,i) => setTimeout(() => beep(f, .18), i*90)),
+  lose:   () => [440,370,294].forEach((f,i) => setTimeout(() => beep(f, .22), i*110)),
 };
 
-// ── DOM refs ───────────────────────────────────────────────────────────────
-const connectingState   = document.getElementById('connectingState');
-const waitingState      = document.getElementById('waitingState');
-const gameMain          = document.getElementById('gameMain');
-const gameOverScreen    = document.getElementById('gameOverScreen');
-const chip0             = document.getElementById('chip0');
-const chip1             = document.getElementById('chip1');
-const wordTiles         = document.getElementById('wordTiles');
-const diffTiles         = document.getElementById('diffTiles');
-const wordInput         = document.getElementById('wordInput');
-const submitBtn         = document.getElementById('submitBtn');
-const inputHint         = document.getElementById('inputHint');
-const turnLabel         = document.getElementById('turnLabel');
-const timerText         = document.getElementById('timerText');
-const timerRing         = document.getElementById('timerRing');
-const historyChain      = document.getElementById('historyChain');
-const opponentThinking  = document.getElementById('opponentThinking');
-const btnGiveUp         = document.getElementById('btnGiveUp');
-const gameRoomCodeDisplay = document.getElementById('gameRoomCodeDisplay');
-const gameLinkInput     = document.getElementById('gameLinkInput');
-const btnGameCopyLink   = document.getElementById('btnGameCopyLink');
-const resultIcon        = document.getElementById('resultIcon');
-const resultTitle       = document.getElementById('resultTitle');
-const resultReason      = document.getElementById('resultReason');
-const statsRow          = document.getElementById('statsRow');
-const finalChain        = document.getElementById('finalChain');
-const btnShareResult    = document.getElementById('btnShareResult');
-const btnRematch        = document.getElementById('btnRematch');
-const rematchStatus     = document.getElementById('rematchStatus');
-const soundToggle       = document.getElementById('soundToggle');
+// ── DOM ────────────────────────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+const connectingState  = $('connectingState');
+const waitingState     = $('waitingState');
+const gameMain         = $('gameMain');
+const gameOverScreen   = $('gameOverScreen');
+const playerBlock0     = $('playerBlock0');
+const playerBlock1     = $('playerBlock1');
+const avatar0          = $('avatar0');
+const avatar1          = $('avatar1');
+const pname0           = $('pname0');
+const pname1           = $('pname1');
+const pscore0          = $('pscore0');
+const pscore1          = $('pscore1');
+const timerRing        = $('timerRing');
+const timerText        = $('timerText');
+const timerWrap        = timerRing?.closest('.timer-ring-wrap');
+const turnLabel        = $('turnLabel');
+const wordTiles        = $('wordTiles');
+const diffTiles        = $('diffTiles');
+const wordInput        = $('wordInput');
+const submitBtn        = $('submitBtn');
+const inputHint        = $('inputHint');
+const opponentThinking = $('opponentThinking');
+const historyChain     = $('historyChain');
+const soundToggle      = $('soundToggle');
+const btnGiveUp        = $('btnGiveUp');
+const gameRoomCodeDisplay = $('gameRoomCodeDisplay');
+const gameLinkInput    = $('gameLinkInput');
+const btnGameCopyLink  = $('btnGameCopyLink');
+const resultIcon       = $('resultIcon');
+const resultTitle      = $('resultTitle');
+const resultReason     = $('resultReason');
+const statsRow         = $('statsRow');
+const finalChain       = $('finalChain');
+const btnShareResult   = $('btnShareResult');
+const btnRematch       = $('btnRematch');
+const rematchStatus    = $('rematchStatus');
 
-// ── Init ───────────────────────────────────────────────────────────────────
+// ── Connect ────────────────────────────────────────────────────────────────
 const roomId = location.pathname.split('/').pop().toUpperCase();
-
 socket.on('connect', () => {
   myId = socket.id;
   socket.emit('sync_game', { roomId, name: savedName, token: MY_TOKEN });
 });
 
 // ── Sound toggle ───────────────────────────────────────────────────────────
-function updateSoundUI() {
+function refreshSoundUI() {
   soundToggle.textContent = soundEnabled ? '🔊' : '🔇';
   soundToggle.classList.toggle('muted', !soundEnabled);
 }
-updateSoundUI();
+refreshSoundUI();
 soundToggle.addEventListener('click', () => {
   soundEnabled = !soundEnabled;
   try { localStorage.setItem('ol_sound', soundEnabled ? 'on' : 'off'); } catch {}
-  updateSoundUI();
+  refreshSoundUI();
 });
 
 // ── Copy link ──────────────────────────────────────────────────────────────
-btnGameCopyLink.addEventListener('click', () => {
+btnGameCopyLink?.addEventListener('click', () => {
   navigator.clipboard.writeText(gameLinkInput.value).then(() => {
     btnGameCopyLink.textContent = '✓';
     setTimeout(() => { btnGameCopyLink.textContent = 'Copy'; }, 2000);
@@ -133,35 +143,58 @@ socket.on('game_start', (state) => {
   gameOverScreen.classList.add('hidden');
   gameMain.classList.remove('hidden');
 
+  selectedTileIdx = -1;
+  changedFlashIdx = -1;
+
+  // Reset rematch UI
   btnRematch.disabled = false;
   btnRematch.textContent = 'Rematch';
   rematchStatus.textContent = '';
   rematchStatus.classList.add('hidden');
-  selectedTileIdx = -1;
 
-  renderPlayers(state);
-  renderWord(state.currentWord);
+  renderHeader(state);
+  renderWord(state.currentWord, -1, -1);
   renderHistory(state.wordHistory, state.players, false);
-  updateTurnUI(state);
+  applyTurnUI(state);
   startTimer(state.timerEndsAt);
 });
 
 socket.on('game_update', (state) => {
+  // Detect which letter changed
+  const prev = gameState?.currentWord || '';
+  const next = state.currentWord;
+  changedFlashIdx = -1;
+  if (prev.length === next.length) {
+    for (let i = 0; i < prev.length; i++) {
+      if (prev[i] !== next[i]) { changedFlashIdx = i; break; }
+    }
+  }
+
   gameState = state;
-  renderWord(state.currentWord, -1, true); // pop animation
+  renderWord(state.currentWord, -1, changedFlashIdx, true);
   renderHistory(state.wordHistory, state.players, true);
-  updateTurnUI(state);
+  updateScores(state);
+  applyTurnUI(state);
   restartTimer(state.timerEndsAt);
   clearInput();
   selectedTileIdx = -1;
   SFX.move();
+
+  // Clear flash after 1.4 s
+  if (flashTimer) clearTimeout(flashTimer);
+  if (changedFlashIdx >= 0) {
+    flashTimer = setTimeout(() => {
+      changedFlashIdx = -1;
+      if (gameState) renderWord(gameState.currentWord, selectedTileIdx, -1);
+    }, 1400);
+  }
 });
 
 socket.on('move_error', ({ error }) => {
   showHint(error, 'error');
   wordInput.classList.add('invalid');
   wordInput.classList.remove('valid');
-  SFX.badWord();
+  SFX.bad();
   wordInput.focus();
 });
 
@@ -170,9 +203,7 @@ socket.on('game_over', (result) => {
   showGameOver(result);
 });
 
-socket.on('stats_update', (stats) => {
-  renderStats(stats);
-});
+socket.on('stats_update', (stats) => renderStats(stats));
 
 socket.on('rematch_status', ({ readyIds, needed }) => {
   const myReady  = readyIds.includes(socket.id);
@@ -190,26 +221,61 @@ socket.on('rematch_status', ({ readyIds, needed }) => {
 });
 
 // ── Rendering ──────────────────────────────────────────────────────────────
-function renderPlayers(state) {
-  const [p0, p1] = state.players;
-  chip0.querySelector('.chip-name').textContent = p0?.name || '—';
-  chip1.querySelector('.chip-name').textContent = p1?.name || 'Waiting…';
+
+function avatarLetter(name) {
+  return (name || '?').charAt(0).toUpperCase();
 }
 
-function renderWord(word, selIdx = -1, animate = false) {
-  wordTiles.innerHTML = '';
+function renderHeader(state) {
+  const [p0, p1] = state.players;
+  avatar0.textContent = avatarLetter(p0?.name);
+  avatar1.textContent = avatarLetter(p1?.name || BOT_NAME);
+  pname0.textContent  = p0?.name  || '—';
+  pname1.textContent  = p1?.name  || 'Waiting…';
+  updateScores(state);
+}
+
+function updateScores(state) {
+  const scores = state.scores || [0, 0];
+  pscore0.textContent = `${scores[0]} W`;
+  pscore1.textContent = `${scores[1]} W`;
+  // Highlight leader
+  pscore0.classList.toggle('leading', scores[0] > scores[1]);
+  pscore1.classList.toggle('leading', scores[1] > scores[0]);
+}
+
+// Dynamic tile sizing based on word length and viewport
+function tileSize(wordLen) {
+  const avail = Math.min(window.innerWidth - 40, 460);
+  const gap   = Math.max(6, Math.min(10, 8));
+  const raw   = (avail - gap * (wordLen - 1)) / wordLen;
+  return {
+    w:    Math.max(44, Math.min(92, raw)),
+    gap,
+    font: Math.max(1.1, Math.min(2.5, raw * 0.028)) + 'rem',
+  };
+}
+
+function renderWord(word, selIdx = -1, flashIdx = -1, pop = false) {
   const isMyTurn = gameState && gameState.currentPlayerId === myId;
+  const { w, gap, font } = tileSize(word.length);
+
+  wordTiles.innerHTML = '';
+  wordTiles.style.setProperty('--tile-gap', gap + 'px');
+
   [...word.toUpperCase()].forEach((ch, i) => {
     const t = document.createElement('div');
     t.className = 'tile';
+    t.style.setProperty('--tw', w + 'px');
+    t.style.setProperty('--tf', font);
+
     if (isMyTurn) t.classList.add('tappable');
-    if (i === selIdx) t.classList.add('selected');
-    if (animate) t.classList.add('pop');
+    if (i === selIdx)   t.classList.add('selected');
+    if (i === flashIdx) t.classList.add('just-changed');
+    if (pop && i !== flashIdx) t.classList.add('pop');
+
     t.textContent = ch;
-    t.dataset.index = i;
-    if (isMyTurn) {
-      t.addEventListener('click', () => onTileTap(i));
-    }
+    if (isMyTurn) t.addEventListener('click', () => onTileTap(i));
     wordTiles.appendChild(t);
   });
 }
@@ -218,142 +284,132 @@ function renderDiff(current, typed) {
   diffTiles.innerHTML = '';
   if (!typed || typed.length !== current.length) return;
   [...typed.toUpperCase()].forEach((ch, i) => {
-    const t = document.createElement('div');
+    const d = document.createElement('div');
     const same = ch.toLowerCase() === current[i].toLowerCase();
-    t.className = `tile ${same ? 'diff-same' : 'diff-changed'}`;
-    t.textContent = ch;
-    diffTiles.appendChild(t);
+    d.className = `diff-tile${same ? '' : ' changed'}`;
+    d.textContent = ch;
+    diffTiles.appendChild(d);
   });
 }
 
 function renderHistory(history, players, animateNew = false) {
-  const prevCount = historyChain.children.length;
   historyChain.innerHTML = '';
   history.forEach((entry, idx) => {
     if (idx > 0) {
-      const arrow = document.createElement('span');
-      arrow.className = 'chain-arrow';
-      arrow.textContent = '→';
-      historyChain.appendChild(arrow);
+      const a = document.createElement('span');
+      a.className = 'h-arrow'; a.textContent = '→';
+      historyChain.appendChild(a);
     }
-    const wordEl = document.createElement('div');
-    wordEl.className = 'chain-word';
-    if (entry.playerId === null) {
-      wordEl.classList.add('start');
+    const w = document.createElement('div');
+    w.className = 'h-word';
+    if (!entry.playerId) {
+      w.classList.add('start');
     } else {
       const pi = players.findIndex(p => p.id === entry.playerId);
-      if (pi >= 0) wordEl.classList.add(`p${pi}`);
+      if (pi >= 0) w.classList.add(`p${pi}`);
     }
-    if (animateNew && idx === history.length - 1) wordEl.classList.add('new');
-    wordEl.textContent = entry.word.toUpperCase();
-    historyChain.appendChild(wordEl);
+    if (animateNew && idx === history.length - 1) w.classList.add('new');
+    w.textContent = entry.word.toUpperCase();
+    historyChain.appendChild(w);
   });
   historyChain.scrollLeft = historyChain.scrollWidth;
 }
 
-function updateTurnUI(state) {
-  const isMyTurn = state.currentPlayerId === myId;
-  const curPlayer = state.players.find(p => p.id === state.currentPlayerId);
+function applyTurnUI(state) {
+  const isMyTurn   = state.currentPlayerId === myId;
+  const curPlayer  = state.players.find(p => p.id === state.currentPlayerId);
 
-  [chip0, chip1].forEach((c, i) => {
-    c.classList.toggle('active', state.players[i]?.id === state.currentPlayerId);
-  });
+  // Active player avatar glow
+  playerBlock0.classList.toggle('active', state.players[0]?.id === state.currentPlayerId);
+  playerBlock1.classList.toggle('active', state.players[1]?.id === state.currentPlayerId);
+
+  turnLabel.textContent = isMyTurn ? 'Your turn' : `${curPlayer?.name || 'Opponent'}'s turn`;
 
   if (isMyTurn) {
-    turnLabel.textContent = 'Your turn';
     wordInput.disabled = false;
     opponentThinking.classList.add('hidden');
     if (!wordInput.value) wordInput.focus();
   } else {
-    turnLabel.textContent = `${curPlayer?.name || 'Opponent'}'s turn`;
     wordInput.disabled = true;
     submitBtn.disabled = true;
     opponentThinking.classList.remove('hidden');
     clearInput();
   }
-  // Re-render tiles with/without tappable class
-  if (gameState) renderWord(gameState.currentWord, selectedTileIdx);
+
+  // Re-render with correct tappable state
+  if (gameState) renderWord(gameState.currentWord, selectedTileIdx, changedFlashIdx);
 }
 
 // ── Tap-to-change ──────────────────────────────────────────────────────────
 function onTileTap(i) {
-  SFX.tileSelect();
+  SFX.tap();
   selectedTileIdx = i;
+  renderWord(gameState.currentWord, i, changedFlashIdx);
 
-  // Fill word input with current word if empty
-  if (!wordInput.value) wordInput.value = gameState.currentWord;
-
-  // Render tiles with selected state
-  renderWord(gameState.currentWord, i);
-
-  // Select that character in the text input
+  // Fill input with current word and position cursor at tapped index
+  wordInput.value = gameState.currentWord;
   wordInput.focus();
   wordInput.setSelectionRange(i, i + 1);
+  wordInput.dispatchEvent(new Event('input'));
 }
 
-// When user types while a tile is selected, replace just that character
 wordInput.addEventListener('keydown', (e) => {
   if (selectedTileIdx < 0) return;
-  if (e.key === 'Enter') return; // let Enter fall through to submit
-
-  // A single letter key: replace the selected tile position
+  if (e.key === 'Enter') return;
   if (/^[a-zA-Z]$/.test(e.key) && !e.ctrlKey && !e.metaKey) {
     e.preventDefault();
-    const word = gameState.currentWord;
-    const newWord = word.slice(0, selectedTileIdx) + e.key.toLowerCase() + word.slice(selectedTileIdx + 1);
-    wordInput.value = newWord;
+    const w    = gameState.currentWord;
+    const newW = w.slice(0, selectedTileIdx) + e.key.toLowerCase() + w.slice(selectedTileIdx + 1);
+    wordInput.value = newW;
     selectedTileIdx = -1;
-    renderWord(word, -1);
+    renderWord(w, -1, changedFlashIdx);
     wordInput.dispatchEvent(new Event('input'));
   } else if (e.key === 'Escape') {
     selectedTileIdx = -1;
-    renderWord(gameState.currentWord);
+    renderWord(gameState.currentWord, -1, changedFlashIdx);
     wordInput.value = '';
     clearInput();
   } else {
-    // Any other key (backspace, arrow, etc) — deselect tile, let input handle it normally
     selectedTileIdx = -1;
-    renderWord(gameState.currentWord);
+    renderWord(gameState.currentWord, -1, changedFlashIdx);
   }
 });
 
-// ── Text input validation ──────────────────────────────────────────────────
+// ── Input validation ───────────────────────────────────────────────────────
 wordInput.addEventListener('input', () => {
-  const val = wordInput.value.trim().toLowerCase();
+  const val     = wordInput.value.trim().toLowerCase();
   const current = gameState?.currentWord || '';
 
   wordInput.classList.remove('valid', 'invalid');
   diffTiles.innerHTML = '';
-  inputHint.textContent = '';
-  inputHint.className = 'input-hint';
+  showHint('', '');
   submitBtn.disabled = true;
 
   if (!val) return;
-
   if (val.length !== current.length) {
     showHint(`Word must be ${current.length} letters`, '');
     renderDiff(current, val);
     return;
   }
 
-  const diffCount = countDiff(current, val);
+  const d = countDiff(current, val);
   renderDiff(current, val);
 
-  if (diffCount === 0) {
-    showHint('Same as current word — change one letter', 'error');
+  if (d === 0) {
+    showHint('Same word — change one letter', 'error');
     wordInput.classList.add('invalid');
-  } else if (diffCount === 1) {
-    showHint('Looks good — press Enter or →', 'ok');
+  } else if (d === 1) {
+    showHint('Looks good — press Submit or Enter', 'ok');
     wordInput.classList.add('valid');
     submitBtn.disabled = false;
-    SFX.goodWord();
+    SFX.valid();
   } else {
-    showHint(`${diffCount} letters changed — must be exactly 1`, 'error');
+    showHint(`${d} letters changed — must be exactly 1`, 'error');
     wordInput.classList.add('invalid');
   }
 });
 
-wordInput.addEventListener('keydown', (e) => {
+wordInput.addEventListener('keydown', e => {
   if (e.key === 'Enter' && !submitBtn.disabled) doSubmit();
 });
 submitBtn.addEventListener('click', doSubmit);
@@ -371,14 +427,13 @@ function clearInput() {
   wordInput.value = '';
   wordInput.classList.remove('valid', 'invalid');
   diffTiles.innerHTML = '';
-  inputHint.textContent = '';
-  inputHint.className = 'input-hint';
+  showHint('', '');
   submitBtn.disabled = true;
 }
 
 function showHint(msg, type) {
   inputHint.textContent = msg;
-  inputHint.className = `input-hint ${type}`;
+  inputHint.className   = `input-hint${type ? ' ' + type : ''}`;
 }
 
 function countDiff(a, b) {
@@ -388,40 +443,35 @@ function countDiff(a, b) {
 }
 
 // ── Timer ──────────────────────────────────────────────────────────────────
-let lastTickSecond = -1;
 function startTimer(endsAt) {
   clearTimer();
-  lastTickSecond = -1;
-  updateTimerDisplay(endsAt);
-  timerInterval = setInterval(() => updateTimerDisplay(endsAt), 100);
+  lastTickSec = -1;
+  tick(endsAt);
+  timerInterval = setInterval(() => tick(endsAt), 100);
 }
 function restartTimer(endsAt) { clearTimer(); startTimer(endsAt); }
 function clearTimer() {
   if (timerInterval) clearInterval(timerInterval);
   timerInterval = null;
 }
-function updateTimerDisplay(endsAt) {
-  const remaining = Math.max(0, (endsAt - Date.now()) / 1000);
-  const secs = Math.ceil(remaining);
+function tick(endsAt) {
+  const rem  = Math.max(0, (endsAt - Date.now()) / 1000);
+  const secs = Math.ceil(rem);
   timerText.textContent = secs;
-
-  const fraction = remaining / TURN_SECS;
-  timerRing.style.strokeDashoffset = RING_CIRCUMFERENCE * (1 - fraction);
+  timerRing.style.strokeDashoffset = RING_CIRC * (1 - rem / TURN_SECS);
 
   timerRing.classList.remove('warning', 'danger');
-  if (remaining <= 3)      { timerRing.classList.add('danger'); }
-  else if (remaining <= 6) { timerRing.classList.add('warning'); }
+  timerWrap?.classList.remove('urgent');
+  if (rem <= 3)      { timerRing.classList.add('danger'); timerWrap?.classList.add('urgent'); }
+  else if (rem <= 6) { timerRing.classList.add('warning'); }
 
-  // Tick sound once per second in the danger zone
-  if (remaining <= 4 && secs !== lastTickSecond && secs > 0) {
-    lastTickSecond = secs;
-    SFX.tick();
+  if (rem <= 4 && secs !== lastTickSec && secs > 0) {
+    lastTickSec = secs; SFX.tick();
   }
-
-  if (remaining <= 0) clearTimer();
+  if (rem <= 0) clearTimer();
 }
 
-// ── Give up ────────────────────────────────────────────────────────────────
+// ── Controls ───────────────────────────────────────────────────────────────
 btnGiveUp.addEventListener('click', () => {
   if (confirm('Give up this game?')) socket.emit('give_up');
 });
@@ -438,99 +488,71 @@ btnRematch.addEventListener('click', () => {
 // ── Game over ──────────────────────────────────────────────────────────────
 function showGameOver(result) {
   clearTimer();
-
   const iWon  = result.winnerName === savedName;
   const iLost = result.loserName  === savedName;
 
-  if (iWon) {
-    resultIcon.textContent = '🏆';
-    resultTitle.textContent = 'You Win!';
-    resultTitle.style.color = 'var(--green)';
-    SFX.win();
-  } else if (iLost) {
-    resultIcon.textContent = '😔';
-    resultTitle.textContent = 'You Lose';
-    resultTitle.style.color = 'var(--red)';
-    SFX.lose();
-  } else {
-    resultIcon.textContent = '🎮';
-    resultTitle.textContent = 'Game Over';
-    resultTitle.style.color = 'var(--text)';
-  }
+  if (iWon)       { resultIcon.textContent = '🏆'; resultTitle.textContent = 'You Win!';  resultTitle.style.color = 'var(--green)'; SFX.win(); }
+  else if (iLost) { resultIcon.textContent = '😔'; resultTitle.textContent = 'You Lose';  resultTitle.style.color = 'var(--red)';   SFX.lose(); }
+  else            { resultIcon.textContent = '🎮'; resultTitle.textContent = 'Game Over'; resultTitle.style.color = 'var(--text)'; }
 
   const reasons = {
-    timeout:    iLost ? 'Time ran out on your turn.' : 'Opponent ran out of time.',
+    timeout:    iLost ? 'You ran out of time.' : 'Opponent ran out of time.',
     forfeit:    iLost ? 'You gave up.' : 'Opponent gave up.',
     disconnect: iLost ? 'You disconnected.' : 'Opponent disconnected.',
   };
   resultReason.textContent = reasons[result.reason] || '';
-
-  // Stats will arrive via stats_update event; clear old stats for now
   statsRow.innerHTML = '';
 
   renderHistoryFinal(result.wordHistory, result.players);
   gameOverScreen.classList.remove('hidden');
 
   btnShareResult.addEventListener('click', () => {
-    const wordCount = (result.wordHistory?.length || 1) - 1;
-    const text = `I played OneLetter — we made a ${wordCount}-word chain! Can you beat it?\n${location.origin}`;
-    if (navigator.share) {
-      navigator.share({ title: 'OneLetter', text }).catch(() => {});
-    } else {
-      navigator.clipboard.writeText(text).then(() => {
-        btnShareResult.textContent = '✓ Copied!';
-        setTimeout(() => { btnShareResult.textContent = 'Share Result'; }, 2000);
-      });
-    }
+    const n    = (result.wordHistory?.length || 1) - 1;
+    const text = `OneLetter — we built a ${n}-word chain! Play at ${location.origin}`;
+    navigator.share
+      ? navigator.share({ title: 'OneLetter', text }).catch(() => {})
+      : navigator.clipboard.writeText(text).then(() => {
+          btnShareResult.textContent = '✓ Copied!';
+          setTimeout(() => { btnShareResult.textContent = 'Share'; }, 2000);
+        });
   }, { once: true });
 }
 
 function renderStats(stats) {
   statsRow.innerHTML = '';
   const items = [
-    { label: 'Rating', value: stats.rating, suffix: '' },
-    { label: 'Change', value: stats.ratingChange, suffix: '', signed: true },
-    { label: 'Wins',   value: stats.wins,    suffix: '' },
-    { label: 'Losses', value: stats.losses,  suffix: '' },
-    { label: 'Streak', value: stats.winStreak, suffix: '' },
+    { l: 'Rating', v: stats.rating,       signed: false },
+    { l: 'Change', v: stats.ratingChange, signed: true  },
+    { l: 'Wins',   v: stats.wins,         signed: false },
+    { l: 'Streak', v: stats.winStreak,    signed: false },
   ];
-  for (const item of items) {
-    const el = document.createElement('div');
-    el.className = 'stat-item';
-    const valEl = document.createElement('div');
-    valEl.className = 'stat-value';
-    if (item.signed) {
-      valEl.classList.add(item.value >= 0 ? 'positive' : 'negative');
-      valEl.textContent = (item.value >= 0 ? '+' : '') + item.value;
-    } else {
-      valEl.textContent = item.value + item.suffix;
-    }
-    const lblEl = document.createElement('div');
-    lblEl.className = 'stat-label';
-    lblEl.textContent = item.label;
-    el.appendChild(valEl);
-    el.appendChild(lblEl);
+  items.forEach(({ l, v, signed }) => {
+    const el  = document.createElement('div'); el.className = 'stat-item';
+    const val = document.createElement('div'); val.className = 'stat-value';
+    if (signed) {
+      val.classList.add(v >= 0 ? 'pos' : 'neg');
+      val.textContent = (v >= 0 ? '+' : '') + v;
+    } else { val.textContent = v; }
+    const lbl = document.createElement('div'); lbl.className = 'stat-label'; lbl.textContent = l;
+    el.append(val, lbl);
     statsRow.appendChild(el);
-  }
+  });
 }
 
 function renderHistoryFinal(history, players) {
   finalChain.innerHTML = '';
   (history || []).forEach((entry, idx) => {
     if (idx > 0) {
-      const arrow = document.createElement('span');
-      arrow.className = 'chain-arrow';
-      arrow.textContent = '→';
-      finalChain.appendChild(arrow);
+      const a = document.createElement('span'); a.className = 'h-arrow'; a.textContent = '→';
+      finalChain.appendChild(a);
     }
-    const wordEl = document.createElement('div');
-    wordEl.className = 'chain-word';
-    if (!entry.playerId) wordEl.classList.add('start');
+    const w = document.createElement('div'); w.className = 'h-word';
+    if (!entry.playerId) w.classList.add('start');
     else {
       const pi = (players || []).findIndex(p => p.id === entry.playerId);
-      if (pi >= 0) wordEl.classList.add(`p${pi}`);
+      if (pi >= 0) w.classList.add(`p${pi}`);
     }
-    wordEl.textContent = (entry.word || '').toUpperCase();
-    finalChain.appendChild(wordEl);
+    w.textContent = (entry.word || '').toUpperCase();
+    finalChain.appendChild(w);
   });
 }
