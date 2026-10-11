@@ -35,6 +35,8 @@ const resultTitle        = document.getElementById('resultTitle');
 const resultReason       = document.getElementById('resultReason');
 const finalChain         = document.getElementById('finalChain');
 const btnShareResult     = document.getElementById('btnShareResult');
+const btnRematch         = document.getElementById('btnRematch');
+const rematchStatus      = document.getElementById('rematchStatus');
 
 // ── Init ───────────────────────────────────────────────────────────────
 const roomId = location.pathname.split('/').pop().toUpperCase();
@@ -73,9 +75,17 @@ socket.on('game_start', (state) => {
   myId = socket.id;
   myPlayerIndex = state.players.findIndex(p => p.id === myId);
 
+  // Hide all other screens, show game
   connectingState.classList.add('hidden');
   waitingState.classList.add('hidden');
+  gameOverScreen.classList.add('hidden');
   gameMain.classList.remove('hidden');
+
+  // Reset rematch UI for fresh game
+  btnRematch.disabled = false;
+  btnRematch.textContent = 'Rematch';
+  rematchStatus.textContent = '';
+  rematchStatus.classList.add('hidden');
 
   renderPlayers(state);
   renderWord(state.currentWord);
@@ -294,6 +304,30 @@ function countDiff(a, b) {
 // ── Give up ────────────────────────────────────────────────────────────
 btnGiveUp.addEventListener('click', () => {
   if (confirm('Give up this game?')) socket.emit('give_up');
+});
+
+// ── Rematch ────────────────────────────────────────────────────────────
+btnRematch.addEventListener('click', () => {
+  btnRematch.disabled = true;
+  btnRematch.textContent = 'Waiting…';
+  rematchStatus.textContent = 'Waiting for opponent to accept…';
+  rematchStatus.classList.remove('hidden');
+  socket.emit('rematch_request');
+});
+
+socket.on('rematch_status', ({ readyIds, needed }) => {
+  const myReady  = readyIds.includes(socket.id);
+  const allReady = readyIds.length >= needed;
+  if (!allReady) {
+    rematchStatus.textContent = myReady
+      ? 'Waiting for opponent to accept…'
+      : 'Opponent wants a rematch!';
+    rematchStatus.classList.remove('hidden');
+    if (!myReady) {
+      btnRematch.disabled = false;
+      btnRematch.textContent = 'Accept Rematch';
+    }
+  }
 });
 
 // ── Game over ─────────────────────────────────────────────────────────

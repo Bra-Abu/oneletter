@@ -1,6 +1,6 @@
 const { isValidWord, isOneLetterDiff } = require('./words');
 
-const TURN_MS = parseInt(process.env.TURN_MS || '10000', 10); // 10 s default, configurable
+const TURN_MS = parseInt(process.env.TURN_MS || '10000', 10);
 
 const STARTING_WORDS = [
   'game', 'word', 'play', 'best', 'care', 'love', 'time', 'work',
@@ -18,24 +18,29 @@ const STARTING_WORDS = [
 
 class GameRoom {
   constructor(roomId, p1Id, p1Name) {
-    this.roomId = roomId;
-    this.players = [{ id: p1Id, name: p1Name }];
-    this.currentWord = null;
-    this.wordHistory = [];
-    this.currentPlayerIndex = 0;
-    this.state = 'waiting'; // waiting | playing | finished
-    this.timerHandle = null;
-    this.timerEndsAt = null;
-    this.winner = null;
-    this.loser = null;
-    this.winnerName = null;
-    this.loserName = null;
-    this.endReason = null;
-    this.startedAt = null;
-    this.createdAt = Date.now();
+    this.roomId   = roomId;
+    this.players  = [{ id: p1Id, name: p1Name }];
+    this.isBot    = false; // set to true for solo games
+    this._initMatchState();
+    this.state      = 'waiting';
+    this.createdAt  = Date.now();
+  }
 
-    // Concurrency guard: blocks duplicate/simultaneous move processing
-    this.busy = false;
+  // Shared init for both first start and rematch
+  _initMatchState() {
+    this.currentWord         = null;
+    this.wordHistory         = [];
+    this.currentPlayerIndex  = 0;
+    this.timerHandle         = null;
+    this.timerEndsAt         = null;
+    this.winner              = null;
+    this.loser               = null;
+    this.winnerName          = null;
+    this.loserName           = null;
+    this.endReason           = null;
+    this.startedAt           = null;
+    this.busy                = false;
+    this.rematchReady        = new Set(); // player IDs who clicked Rematch
   }
 
   addPlayer(p2Id, p2Name) {
@@ -48,45 +53,42 @@ class GameRoom {
     const pool = STARTING_WORDS.filter(w => isValidWord(w));
     this.currentWord = pool[Math.floor(Math.random() * pool.length)] || 'game';
     this.wordHistory = [{ word: this.currentWord, playerId: null, playerName: 'Start' }];
-    this.state = 'playing';
-    this.startedAt = Date.now();
+    this.state       = 'playing';
+    this.startedAt   = Date.now();
     this.currentPlayerIndex = 0;
+  }
+
+  // Reset to fresh match state for rematch (players stay, new word)
+  rematch() {
+    if (this.timerHandle) clearTimeout(this.timerHandle);
+    this._initMatchState();
+    this.start();
   }
 
   getCurrentPlayer() {
     return this.players[this.currentPlayerIndex];
   }
 
-  // Returns { success } or { error }
-  // Rejects if busy (duplicate/simultaneous submission) or stale-turn
   makeMove(playerId, newWord) {
-    if (this.state !== 'playing') return { error: 'Game is not active' };
-
-    // Stale-turn guard: reject if not this player's turn
-    if (this.getCurrentPlayer().id !== playerId) return { error: "It's not your turn" };
-
-    // Concurrency guard: reject if a move is already being processed
-    if (this.busy) return { error: 'Still processing your last submission' };
+    if (this.state !== 'playing')                    return { error: 'Game is not active' };
+    if (this.getCurrentPlayer().id !== playerId)     return { error: "It's not your turn" };
+    if (this.busy)                                   return { error: 'Still processing your last submission' };
 
     this.busy = true;
     try {
       newWord = newWord.toLowerCase().trim();
 
-      if (!isOneLetterDiff(this.currentWord, newWord)) {
+      if (!isOneLetterDiff(this.currentWord, newWord))
         return { error: 'Must change exactly one letter' };
-      }
-      if (!isValidWord(newWord)) {
+      if (!isValidWord(newWord))
         return { error: `"${newWord}" is not a valid English word` };
-      }
-      if (this.wordHistory.some(h => h.word === newWord)) {
+      if (this.wordHistory.some(h => h.word === newWord))
         return { error: 'That word has already been played' };
-      }
 
       const player = this.players.find(p => p.id === playerId);
       this.wordHistory.push({ word: newWord, playerId, playerName: player?.name || 'Player' });
       this.currentWord = newWord;
       this.currentPlayerIndex = 1 - this.currentPlayerIndex;
-
       return { success: true };
     } finally {
       this.busy = false;
@@ -94,34 +96,35 @@ class GameRoom {
   }
 
   endGame(loserId, reason) {
-    if (this.state === 'finished') return null; // already ended — ignore duplicate calls
+    if (this.state === 'finished') return null;
     this.state = 'finished';
     const loserPlayer  = this.players.find(p => p.id === loserId);
     const winnerPlayer = this.players.find(p => p.id !== loserId);
     this.loserName  = loserPlayer?.name  || null;
     this.winnerName = winnerPlayer?.name || null;
-    this.loser  = loserId;
-    this.winner = winnerPlayer?.id || null;
-    this.endReason = reason;
+    this.loser      = loserId;
+    this.winner     = winnerPlayer?.id   || null;
+    this.endReason  = reason;
     if (this.timerHandle) clearTimeout(this.timerHandle);
     return {
-      winnerName: this.winnerName,
-      loserName:  this.loserName,
+      winnerName:  this.winnerName,
+      loserName:   this.loserName,
       reason,
       wordHistory: this.wordHistory,
-      players: this.players,
+      players:     this.players,
     };
   }
 
   getState() {
     return {
-      roomId: this.roomId,
-      players: this.players,
-      currentWord: this.currentWord,
-      wordHistory: this.wordHistory,
+      roomId:          this.roomId,
+      players:         this.players,
+      currentWord:     this.currentWord,
+      wordHistory:     this.wordHistory,
       currentPlayerId: this.getCurrentPlayer()?.id || null,
-      state: this.state,
-      timerEndsAt: this.timerEndsAt,
+      state:           this.state,
+      timerEndsAt:     this.timerEndsAt,
+      isBot:           this.isBot,
     };
   }
 }

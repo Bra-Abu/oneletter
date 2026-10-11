@@ -484,7 +484,12 @@ body {
 .result-reason { font-size: .85rem; color: var(--muted); }
 .final-chain-wrap { width: 100%; }
 .game-over-actions { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
-.game-over-actions .btn-primary { text-decoration: none; display: inline-block; }
+.game-over-actions .btn-primary,
+.game-over-actions .btn-ghost { text-decoration: none; display: inline-block; }
+.rematch-status {
+  font-size: .8rem; color: var(--muted); margin-top: -4px;
+  min-height: 18px; text-align: center;
+}
 
 /* ── Responsive tweaks ──────────────────────────────────────────────── */
 @media (max-width: 400px) {

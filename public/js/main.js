@@ -105,7 +105,16 @@ if (urlRoom) {
 
 // ── Socket events ─────────────────────────────────────────────────────────
 socket.on('waiting', () => {
-  // already showing waitingOverlay
+  waitingOverlay.classList.remove('hidden');
+});
+
+socket.on('queue_cancelled', () => {
+  waitingOverlay.classList.add('hidden');
+});
+
+socket.on('queue_error', ({ message }) => {
+  waitingOverlay.classList.add('hidden');
+  alert(message);
 });
 
 socket.on('game_created', ({ roomId }) => {
