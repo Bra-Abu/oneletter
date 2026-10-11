@@ -6,7 +6,7 @@ let myPlayerIndex = -1; // 0 or 1
 let gameState = null;
 let timerInterval = null;
 
-const TURN_SECS = 30;
+const TURN_SECS = 10;
 const RING_CIRCUMFERENCE = 163.36; // 2 * PI * 26
 
 // ── DOM refs ──────────────────────────────────────────────────────────
@@ -215,8 +215,8 @@ function updateTimerDisplay(endsAt) {
   timerRing.style.strokeDashoffset = offset;
 
   timerRing.classList.remove('warning', 'danger');
-  if (remaining <= 10) timerRing.classList.add('danger');
-  else if (remaining <= 20) timerRing.classList.add('warning');
+  if (remaining <= 3) timerRing.classList.add('danger');
+  else if (remaining <= 6) timerRing.classList.add('warning');
 
   if (remaining <= 0) clearTimer();
 }

@@ -5,6 +5,7 @@ const { v4: uuidv4 } = require('uuid');
 const path = require('path');
 const { loadWords } = require('./words');
 const { GameRoom, TURN_MS } = require('./game');
+const { saveMatch } = require('./db');
 
 loadWords();
 
@@ -14,7 +15,6 @@ const io = new Server(server, { cors: { origin: '*' } });
 
 app.use(express.static(path.join(__dirname, '../public')));
 
-// Route /game/:roomId to game.html
 app.get('/game/:roomId', (req, res) => {
   res.sendFile(path.join(__dirname, '../public/game.html'));
 });
@@ -23,6 +23,8 @@ const games = new Map();             // roomId -> GameRoom
 const queue = [];                    // [{ socketId, name }]
 const disconnectTimers = new Map();  // oldSocketId -> timeout handle
 
+// ── Helpers ────────────────────────────────────────────────────────────────
+
 function startTurn(room) {
   if (room.timerHandle) clearTimeout(room.timerHandle);
   room.timerEndsAt = Date.now() + TURN_MS;
@@ -30,20 +32,29 @@ function startTurn(room) {
   room.timerHandle = setTimeout(() => {
     if (room.state !== 'playing') return;
     const current = room.getCurrentPlayer();
-    const result = room.endGame(current.id, 'timeout');
-    io.to(room.roomId).emit('game_over', result);
-    scheduleCleanup(room.roomId);
+    finishGame(room, current.id, 'timeout');
   }, TURN_MS);
+}
+
+// Single authoritative path for ending a game: mutate state, persist, broadcast.
+function finishGame(room, loserId, reason) {
+  const result = room.endGame(loserId, reason);
+  if (!result) return; // endGame returns null if already finished
+  saveMatch(room);
+  io.to(room.roomId).emit('game_over', result);
+  scheduleCleanup(room.roomId);
 }
 
 function scheduleCleanup(roomId) {
   setTimeout(() => games.delete(roomId), 5 * 60 * 1000);
 }
 
+// ── Socket handlers ────────────────────────────────────────────────────────
+
 io.on('connection', (socket) => {
   console.log(`[+] ${socket.id}`);
 
-  // ── Random matchmaking ──────────────────────────────────────────────
+  // ── Random matchmaking ─────────────────────────────────────────────────
   socket.on('join_random', ({ name }) => {
     name = (name || 'Anonymous').slice(0, 20);
 
@@ -65,10 +76,8 @@ io.on('connection', (socket) => {
 
       room.start();
       startTurn(room);
-
       io.to(roomId).emit('game_start', room.getState());
     } else {
-      // Remove any stale entry for this socket
       const existing = queue.findIndex(q => q.socketId === socket.id);
       if (existing !== -1) queue.splice(existing, 1);
       queue.push({ socketId: socket.id, name });
@@ -81,7 +90,7 @@ io.on('connection', (socket) => {
     if (idx !== -1) queue.splice(idx, 1);
   });
 
-  // ── Private game ────────────────────────────────────────────────────
+  // ── Private game ──────────────────────────────────────────────────────
   socket.on('create_game', ({ name }) => {
     name = (name || 'Anonymous').slice(0, 20);
     const roomId = uuidv4().slice(0, 8).toUpperCase();
@@ -99,22 +108,21 @@ io.on('connection', (socket) => {
 
     if (!room) return socket.emit('join_error', { message: 'Room not found. Check the code and try again.' });
 
-    // Reconnect: player already in this room (same name, state playing/finished)
+    // Reconnect by name (socket ID changed due to page navigation)
     const existing = room.players.find(p => p.name === name);
     if (existing && room.state !== 'waiting') {
-      existing.id = socket.id; // update socket id
+      existing.id = socket.id;
       socket.join(roomId);
       socket.data.roomId = roomId;
       if (room.state === 'playing') {
-        startTurn(room); // re-sync timer
         socket.emit('game_start', room.getState());
       } else {
         socket.emit('game_over', {
-          winner: room.winner,
-          loser: room.loser,
-          reason: room.endReason,
+          winnerName: room.winnerName,
+          loserName:  room.loserName,
+          reason:     room.endReason,
           wordHistory: room.wordHistory,
-          players: room.players,
+          players:    room.players,
         });
       }
       return;
@@ -132,23 +140,7 @@ io.on('connection', (socket) => {
     io.to(roomId).emit('game_start', room.getState());
   });
 
-  // ── Gameplay ─────────────────────────────────────────────────────────
-  socket.on('make_move', ({ word }) => {
-    const roomId = socket.data.roomId;
-    if (!roomId) return;
-    const room = games.get(roomId);
-    if (!room) return;
-
-    const result = room.makeMove(socket.id, word);
-    if (result.error) {
-      return socket.emit('move_error', { error: result.error });
-    }
-
-    startTurn(room);
-    io.to(roomId).emit('game_update', room.getState());
-  });
-
-  // ── Sync (game page on load/reconnect) ──────────────────────────────
+  // ── Sync (game page loads / reconnect after navigation) ────────────────
   socket.on('sync_game', ({ roomId, name }) => {
     roomId = (roomId || '').trim().toUpperCase();
     name = (name || 'Anonymous').slice(0, 20);
@@ -159,13 +151,10 @@ io.on('connection', (socket) => {
     socket.join(roomId);
     socket.data.roomId = roomId;
 
-    // Update this player's socket ID and cancel any pending disconnect timer
     const player = room.players.find(p => p.name === name);
     if (player) {
       const oldId = player.id;
       player.id = socket.id;
-
-      // Cancel grace-period disconnect timer for old socket
       if (disconnectTimers.has(oldId)) {
         clearTimeout(disconnectTimers.get(oldId));
         disconnectTimers.delete(oldId);
@@ -179,26 +168,41 @@ io.on('connection', (socket) => {
     } else {
       socket.emit('game_over', {
         winnerName: room.winnerName,
-        loserName: room.loserName,
-        reason: room.endReason,
+        loserName:  room.loserName,
+        reason:     room.endReason,
         wordHistory: room.wordHistory,
-        players: room.players,
+        players:    room.players,
       });
     }
   });
 
+  // ── Move submission ────────────────────────────────────────────────────
+  socket.on('make_move', ({ word }) => {
+    const roomId = socket.data.roomId;
+    if (!roomId) return;
+    const room = games.get(roomId);
+    if (!room) return;
+
+    const result = room.makeMove(socket.id, word);
+    if (result.error) {
+      return socket.emit('move_error', { error: result.error });
+    }
+
+    // Valid move: reset the authoritative server timer and broadcast new state
+    startTurn(room);
+    io.to(roomId).emit('game_update', room.getState());
+  });
+
+  // ── Give up ────────────────────────────────────────────────────────────
   socket.on('give_up', () => {
     const roomId = socket.data.roomId;
     if (!roomId) return;
     const room = games.get(roomId);
     if (!room || room.state !== 'playing') return;
-
-    const result = room.endGame(socket.id, 'forfeit');
-    io.to(roomId).emit('game_over', result);
-    scheduleCleanup(roomId);
+    finishGame(room, socket.id, 'forfeit');
   });
 
-  // ── Disconnect ────────────────────────────────────────────────────────
+  // ── Disconnect ─────────────────────────────────────────────────────────
   socket.on('disconnect', () => {
     console.log(`[-] ${socket.id}`);
     const qi = queue.findIndex(q => q.socketId === socket.id);
@@ -209,18 +213,13 @@ io.on('connection', (socket) => {
     const room = games.get(roomId);
     if (!room || room.state !== 'playing') return;
 
-    // Grace period: give player 6 seconds to reconnect before ending the game.
-    // This covers the case where the browser navigates from landing → game page,
-    // causing a brief socket disconnect before the new page's socket connects.
+    // Grace period: player has 6 s to reconnect (covers landing→game navigation)
     const sid = socket.id;
     const timer = setTimeout(() => {
       if (room.state !== 'playing') return;
-      // Only end game if this socket ID is still the active one for some player
       const stillOwns = room.players.some(p => p.id === sid);
-      if (!stillOwns) return; // player reconnected with a new socket ID
-      const result = room.endGame(sid, 'disconnect');
-      io.to(roomId).emit('game_over', result);
-      scheduleCleanup(roomId);
+      if (!stillOwns) return;
+      finishGame(room, sid, 'disconnect');
     }, 6000);
 
     disconnectTimers.set(sid, timer);
