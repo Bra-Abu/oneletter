@@ -5,7 +5,7 @@ const { v4: uuidv4 } = require('uuid');
 const path = require('path');
 const { loadWords, getNeighbours } = require('./words');
 const { GameRoom, TURN_MS } = require('./game');
-const { saveMatch } = require('./db');
+const { saveMatch, updateStats } = require('./db');
 
 loadWords();
 
@@ -18,27 +18,24 @@ app.get('/game/:roomId', (req, res) =>
   res.sendFile(path.join(__dirname, '../public/game.html')));
 
 // ── State ──────────────────────────────────────────────────────────────────
-const games           = new Map();  // roomId  -> GameRoom
-const queue           = [];         // [{ socketId, name }]  — ordered waitlist
-const disconnectTimers = new Map(); // socketId -> timeout handle
+const games            = new Map();  // roomId  -> GameRoom
+const queue            = [];         // [{ socketId, name, token }]
+const disconnectTimers = new Map();  // socketId -> timeout handle
 
-const BOT_ID      = '__BOT__';
-const BOT_NAME    = 'OneBot 🤖';
-const BOT_DELAY   = 1500;
+const BOT_ID    = '__BOT__';
+const BOT_NAME  = 'OneBot 🤖';
+const BOT_DELAY = 1500;
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
 function isInQueue(socketId) {
   return queue.some(q => q.socketId === socketId);
 }
-
 function removeFromQueue(socketId) {
   const i = queue.findIndex(q => q.socketId === socketId);
   if (i !== -1) queue.splice(i, 1);
 }
-
 function isInActiveGame(socketId) {
-  // True if this socket is a player in any room that is waiting or playing
   for (const room of games.values()) {
     if (room.state === 'finished') continue;
     if (room.players.some(p => p.id === socketId)) return true;
@@ -49,19 +46,44 @@ function isInActiveGame(socketId) {
 function startTurn(room) {
   if (room.timerHandle) clearTimeout(room.timerHandle);
   room.timerEndsAt = Date.now() + TURN_MS;
-
   room.timerHandle = setTimeout(() => {
     if (room.state !== 'playing') return;
     finishGame(room, room.getCurrentPlayer().id, 'timeout');
   }, TURN_MS);
-
   scheduleBotMove(room);
 }
 
 function finishGame(room, loserId, reason) {
   const result = room.endGame(loserId, reason);
   if (!result) return;
+
   saveMatch(room);
+
+  // Update Elo + stats, then send private stat update to each human player
+  const p0 = room.players[0];
+  const p1 = room.players[1];
+  const isBotGame = room.isBot;
+  const winnerToken = room.players.find(p => p.id === room.winner)?.token || null;
+
+  try {
+    const stats = updateStats(
+      p0.token, p0.name,
+      isBotGame ? '__bot__' : p1.token, p1.name,
+      winnerToken,
+      isBotGame
+    );
+
+    for (const player of room.players) {
+      if (player.id === BOT_ID) continue;
+      const sock = io.sockets.sockets.get(player.id);
+      if (sock && stats[player.token]) {
+        sock.emit('stats_update', stats[player.token]);
+      }
+    }
+  } catch (e) {
+    console.error('[stats]', e.message);
+  }
+
   io.to(room.roomId).emit('game_over', result);
   scheduleCleanup(room.roomId);
 }
@@ -71,29 +93,26 @@ function scheduleCleanup(roomId) {
 }
 
 function scheduleBotMove(room) {
-  if (!room.isBot) return;
-  if (room.state !== 'playing') return;
+  if (!room.isBot || room.state !== 'playing') return;
   if (room.getCurrentPlayer().id !== BOT_ID) return;
-
   setTimeout(() => {
     if (room.state !== 'playing') return;
     if (room.getCurrentPlayer().id !== BOT_ID) return;
-
     const played = new Set(room.wordHistory.map(h => h.word));
-    const neighbours = getNeighbours(room.currentWord, played);
-
-    if (neighbours.length === 0) {
-      finishGame(room, BOT_ID, 'timeout');
-      return;
-    }
-
-    const pick = neighbours[Math.floor(Math.random() * neighbours.length)];
+    const nb = getNeighbours(room.currentWord, played);
+    if (!nb.length) { finishGame(room, BOT_ID, 'timeout'); return; }
+    const pick = nb[Math.floor(Math.random() * nb.length)];
     const res = room.makeMove(BOT_ID, pick);
     if (res.error) { finishGame(room, BOT_ID, 'timeout'); return; }
-
     startTurn(room);
     io.to(room.roomId).emit('game_update', room.getState());
   }, BOT_DELAY);
+}
+
+function makeRoom(roomId, p1Id, p1Name, p1Token) {
+  const room = new GameRoom(roomId, p1Id, p1Name);
+  room.players[0].token = p1Token;
+  return room;
 }
 
 // ── Socket handlers ────────────────────────────────────────────────────────
@@ -102,33 +121,28 @@ io.on('connection', (socket) => {
   console.log(`[+] ${socket.id}`);
 
   // ── Random matchmaking ─────────────────────────────────────────────────
-  socket.on('join_random', ({ name }) => {
-    name = (name || 'Anonymous').slice(0, 20);
+  socket.on('join_random', ({ name, token }) => {
+    name  = (name  || 'Anonymous').slice(0, 20);
+    token = (token || uuidv4()).slice(0, 36);
+    socket.data.token = token;
 
-    // Prevent joining if already queued
     if (isInQueue(socket.id)) return;
-
-    // Prevent joining if already in an active game
     if (isInActiveGame(socket.id)) {
       return socket.emit('queue_error', { message: 'You are already in an active game.' });
     }
 
-    // Find a waiting opponent that is not this player
     const oppIdx = queue.findIndex(q => q.socketId !== socket.id);
-
     if (oppIdx !== -1) {
       const opp = queue.splice(oppIdx, 1)[0];
       const oppSocket = io.sockets.sockets.get(opp.socketId);
-
       const roomId = uuidv4().slice(0, 8).toUpperCase();
-      const room = new GameRoom(roomId, opp.socketId, opp.name);
+
+      const room = makeRoom(roomId, opp.socketId, opp.name, opp.token);
       room.addPlayer(socket.id, name);
+      room.players[1].token = token;
       games.set(roomId, room);
 
-      if (oppSocket) {
-        oppSocket.join(roomId);
-        oppSocket.data.roomId = roomId;
-      }
+      if (oppSocket) { oppSocket.join(roomId); oppSocket.data.roomId = roomId; }
       socket.join(roomId);
       socket.data.roomId = roomId;
 
@@ -136,7 +150,7 @@ io.on('connection', (socket) => {
       startTurn(room);
       io.to(roomId).emit('game_start', room.getState());
     } else {
-      queue.push({ socketId: socket.id, name });
+      queue.push({ socketId: socket.id, name, token });
       socket.emit('waiting');
     }
   });
@@ -146,46 +160,51 @@ io.on('connection', (socket) => {
     socket.emit('queue_cancelled');
   });
 
-  // ── Solo / bot game ────────────────────────────────────────────────────
-  socket.on('play_bot', ({ name }) => {
-    name = (name || 'Anonymous').slice(0, 20);
+  // ── Solo / bot ────────────────────────────────────────────────────────
+  socket.on('play_bot', ({ name, token }) => {
+    name  = (name  || 'Anonymous').slice(0, 20);
+    token = (token || uuidv4()).slice(0, 36);
+    socket.data.token = token;
     if (isInActiveGame(socket.id)) return;
 
     const roomId = uuidv4().slice(0, 8).toUpperCase();
-    const room = new GameRoom(roomId, socket.id, name);
+    const room = makeRoom(roomId, socket.id, name, token);
     room.addPlayer(BOT_ID, BOT_NAME);
+    room.players[1].token = '__bot__';
     room.isBot = true;
     games.set(roomId, room);
 
     socket.join(roomId);
     socket.data.roomId = roomId;
-
     room.start();
     startTurn(room);
     socket.emit('game_start', room.getState());
   });
 
   // ── Private game ──────────────────────────────────────────────────────
-  socket.on('create_game', ({ name }) => {
-    name = (name || 'Anonymous').slice(0, 20);
+  socket.on('create_game', ({ name, token }) => {
+    name  = (name  || 'Anonymous').slice(0, 20);
+    token = (token || uuidv4()).slice(0, 36);
+    socket.data.token = token;
     if (isInActiveGame(socket.id)) return;
 
     const roomId = uuidv4().slice(0, 8).toUpperCase();
-    const room = new GameRoom(roomId, socket.id, name);
+    const room = makeRoom(roomId, socket.id, name, token);
     games.set(roomId, room);
     socket.join(roomId);
     socket.data.roomId = roomId;
     socket.emit('game_created', { roomId });
   });
 
-  socket.on('join_game', ({ roomId, name }) => {
-    name = (name || 'Anonymous').slice(0, 20);
+  socket.on('join_game', ({ roomId, name, token }) => {
+    name   = (name   || 'Anonymous').slice(0, 20);
+    token  = (token  || uuidv4()).slice(0, 36);
     roomId = (roomId || '').trim().toUpperCase();
+    socket.data.token = token;
     const room = games.get(roomId);
 
     if (!room) return socket.emit('join_error', { message: 'Room not found. Check the code and try again.' });
 
-    // Reconnect by name
     const existing = room.players.find(p => p.name === name);
     if (existing && room.state !== 'waiting') {
       existing.id = socket.id;
@@ -195,11 +214,8 @@ io.on('connection', (socket) => {
         socket.emit('game_start', room.getState());
       } else {
         socket.emit('game_over', {
-          winnerName:  room.winnerName,
-          loserName:   room.loserName,
-          reason:      room.endReason,
-          wordHistory: room.wordHistory,
-          players:     room.players,
+          winnerName: room.winnerName, loserName: room.loserName,
+          reason: room.endReason, wordHistory: room.wordHistory, players: room.players,
         });
       }
       return;
@@ -209,6 +225,7 @@ io.on('connection', (socket) => {
     if (room.state !== 'waiting') return socket.emit('join_error', { message: 'Game already started.' });
 
     room.addPlayer(socket.id, name);
+    room.players[1].token = token;
     socket.join(roomId);
     socket.data.roomId = roomId;
     room.start();
@@ -216,10 +233,12 @@ io.on('connection', (socket) => {
     io.to(roomId).emit('game_start', room.getState());
   });
 
-  // ── Sync (game page reconnect after navigation) ────────────────────────
-  socket.on('sync_game', ({ roomId, name }) => {
+  // ── Sync (game page reconnect) ─────────────────────────────────────────
+  socket.on('sync_game', ({ roomId, name, token }) => {
     roomId = (roomId || '').trim().toUpperCase();
-    name   = (name  || 'Anonymous').slice(0, 20);
+    name   = (name   || 'Anonymous').slice(0, 20);
+    token  = (token  || '').slice(0, 36);
+    socket.data.token = token;
     const room = games.get(roomId);
 
     if (!room) return socket.emit('sync_error', { message: 'Game not found — it may have expired.' });
@@ -243,43 +262,35 @@ io.on('connection', (socket) => {
       socket.emit('game_start', room.getState());
     } else {
       socket.emit('game_over', {
-        winnerName:  room.winnerName,
-        loserName:   room.loserName,
-        reason:      room.endReason,
-        wordHistory: room.wordHistory,
-        players:     room.players,
+        winnerName: room.winnerName, loserName: room.loserName,
+        reason: room.endReason, wordHistory: room.wordHistory, players: room.players,
         rematchReady: [...room.rematchReady],
       });
     }
   });
 
-  // ── Move submission ────────────────────────────────────────────────────
+  // ── Move ──────────────────────────────────────────────────────────────
   socket.on('make_move', ({ word }) => {
-    const roomId = socket.data.roomId;
-    if (!roomId) return;
-    const room = games.get(roomId);
+    const room = games.get(socket.data.roomId);
     if (!room) return;
-
     const result = room.makeMove(socket.id, word);
     if (result.error) return socket.emit('move_error', { error: result.error });
-
     startTurn(room);
-    io.to(roomId).emit('game_update', room.getState());
+    io.to(room.roomId).emit('game_update', room.getState());
   });
 
-  // ── Give up ────────────────────────────────────────────────────────────
+  // ── Give up ───────────────────────────────────────────────────────────
   socket.on('give_up', () => {
     const room = games.get(socket.data.roomId);
     if (!room || room.state !== 'playing') return;
     finishGame(room, socket.id, 'forfeit');
   });
 
-  // ── Rematch ────────────────────────────────────────────────────────────
+  // ── Rematch ───────────────────────────────────────────────────────────
   socket.on('rematch_request', () => {
     const room = games.get(socket.data.roomId);
     if (!room || room.state !== 'finished') return;
 
-    // Bot game: restart immediately, no need for opponent consent
     if (room.isBot) {
       room.rematch();
       startTurn(room);
@@ -288,14 +299,10 @@ io.on('connection', (socket) => {
     }
 
     room.rematchReady.add(socket.id);
-
-    // Tell the room how many have accepted so the UI can update
     io.to(room.roomId).emit('rematch_status', {
-      readyIds: [...room.rematchReady],
-      needed:   2,
+      readyIds: [...room.rematchReady], needed: 2,
     });
 
-    // Both players agreed — start rematch
     if (room.rematchReady.size >= 2) {
       room.rematch();
       startTurn(room);
@@ -303,23 +310,20 @@ io.on('connection', (socket) => {
     }
   });
 
-  // ── Disconnect ─────────────────────────────────────────────────────────
+  // ── Disconnect ────────────────────────────────────────────────────────
   socket.on('disconnect', () => {
     console.log(`[-] ${socket.id}`);
     removeFromQueue(socket.id);
-
     const roomId = socket.data.roomId;
     if (!roomId) return;
     const room = games.get(roomId);
     if (!room || room.state !== 'playing') return;
-
     const sid = socket.id;
     const timer = setTimeout(() => {
       if (room.state !== 'playing') return;
       if (!room.players.some(p => p.id === sid)) return;
       finishGame(room, sid, 'disconnect');
     }, 6000);
-
     disconnectTimers.set(sid, timer);
   });
 });

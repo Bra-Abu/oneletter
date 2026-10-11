@@ -1,5 +1,13 @@
 const socket = io();
 
+// Persistent player identity — no login required
+function getToken() {
+  let t = localStorage.getItem('ol_token');
+  if (!t) { t = crypto.randomUUID(); localStorage.setItem('ol_token', t); }
+  return t;
+}
+const MY_TOKEN = getToken();
+
 const nameInput        = document.getElementById('nameInput');
 const btnRandom        = document.getElementById('btnRandom');
 const btnBot           = document.getElementById('btnBot');
@@ -37,7 +45,7 @@ nameInput.value = loadName();
 btnRandom.addEventListener('click', () => {
   saveName(getName());
   waitingOverlay.classList.remove('hidden');
-  socket.emit('join_random', { name: getName() });
+  socket.emit('join_random', { name: getName(), token: MY_TOKEN });
 });
 
 btnCancelQueue.addEventListener('click', () => {
@@ -49,13 +57,13 @@ btnCancelQueue.addEventListener('click', () => {
 btnBot.addEventListener('click', () => {
   saveName(getName());
   sessionStorage.setItem('ol_name', getName());
-  socket.emit('play_bot', { name: getName() });
+  socket.emit('play_bot', { name: getName(), token: MY_TOKEN });
 });
 
 // ── Create private game ──────────────────────────────────────────────────
 btnCreate.addEventListener('click', () => {
   saveName(getName());
-  socket.emit('create_game', { name: getName() });
+  socket.emit('create_game', { name: getName(), token: MY_TOKEN });
 });
 
 btnCancelCreate.addEventListener('click', () => {
@@ -91,7 +99,7 @@ function doJoin() {
   const joinName = joinNameInput.value.trim() || getName() || 'Anonymous';
   saveName(joinName);
   sessionStorage.setItem('ol_name', joinName);
-  socket.emit('join_game', { roomId: code, name: joinName });
+  socket.emit('join_game', { roomId: code, name: joinName, token: MY_TOKEN });
 }
 
 // ── Handle URL param: auto-join if ?room=XXXXX ───────────────────────────

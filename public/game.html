@@ -62,7 +62,7 @@
 
     <!-- CURRENT WORD -->
     <div class="word-display-wrap">
-      <div class="word-label">Current word</div>
+      <div class="word-label">Current word — <span class="tap-hint">tap a letter to change it</span></div>
       <div class="word-tiles" id="wordTiles"></div>
     </div>
 
@@ -71,12 +71,15 @@
       <div class="input-wrap">
         <input id="wordInput" class="word-input" type="text"
                maxlength="8" placeholder="Type your word…"
-               autocomplete="off" autocorrect="off" spellcheck="false" />
+               autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" />
         <button class="submit-btn" id="submitBtn" disabled>→</button>
       </div>
       <div class="diff-tiles" id="diffTiles"></div>
       <div class="input-hint" id="inputHint"></div>
     </div>
+
+    <!-- Sound toggle -->
+    <button class="sound-toggle" id="soundToggle" title="Toggle sounds">🔊</button>
 
     <div class="opponent-thinking hidden" id="opponentThinking">
       <span>Opponent is thinking</span><span class="dots">...</span>
@@ -96,6 +99,7 @@
       <div class="result-icon" id="resultIcon">🏆</div>
       <h2 class="result-title" id="resultTitle">You Win!</h2>
       <p class="result-reason" id="resultReason"></p>
+      <div class="stats-row" id="statsRow"></div>
 
       <div class="final-chain-wrap">
         <div class="history-label">Word chain played</div>
