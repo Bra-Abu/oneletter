@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OneLetter</title>
+  <link rel="stylesheet" href="/css/style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@700;800&display=swap" rel="stylesheet" />
+</head>
+<body class="game-page">
+
+  <!-- TOP BAR -->
+  <header class="game-header">
+    <a href="/" class="back-link">← OneLetter</a>
+    <div class="player-chips" id="playerChips">
+      <div class="player-chip" id="chip0">
+        <span class="chip-dot"></span>
+        <span class="chip-name">—</span>
+      </div>
+      <div class="vs-label">VS</div>
+      <div class="player-chip right" id="chip1">
+        <span class="chip-name">—</span>
+        <span class="chip-dot"></span>
+      </div>
+    </div>
+    <button class="btn-give-up" id="btnGiveUp">Give Up</button>
+  </header>
+
+  <!-- CONNECTING STATE -->
+  <div id="connectingState" class="game-state-screen">
+    <div class="spinner"></div>
+    <p>Connecting…</p>
+  </div>
+
+  <!-- WAITING STATE (private game host waiting) -->
+  <div id="waitingState" class="game-state-screen hidden">
+    <div class="spinner"></div>
+    <p>Waiting for your opponent to join…</p>
+    <div class="room-code-display small" id="gameRoomCodeDisplay">—</div>
+    <div class="link-row">
+      <input id="gameLinkInput" class="input-field small" readonly />
+      <button class="btn-copy" id="btnGameCopyLink">Copy</button>
+    </div>
+  </div>
+
+  <!-- MAIN GAME -->
+  <main id="gameMain" class="game-main hidden">
+
+    <!-- TIMER -->
+    <div class="timer-wrap">
+      <div class="timer-ring">
+        <svg viewBox="0 0 60 60">
+          <circle class="ring-bg" cx="30" cy="30" r="26" />
+          <circle class="ring-fg" id="timerRing" cx="30" cy="30" r="26"
+                  stroke-dasharray="163.36" stroke-dashoffset="0" />
+        </svg>
+        <span class="timer-text" id="timerText">30</span>
+      </div>
+      <div class="turn-label" id="turnLabel">Your turn</div>
+    </div>
+
+    <!-- CURRENT WORD -->
+    <div class="word-display-wrap">
+      <div class="word-label">Current word</div>
+      <div class="word-tiles" id="wordTiles"></div>
+    </div>
+
+    <!-- INPUT AREA -->
+    <div class="input-area" id="inputArea">
+      <div class="input-wrap">
+        <input id="wordInput" class="word-input" type="text"
+               maxlength="8" placeholder="Type your word…"
+               autocomplete="off" autocorrect="off" spellcheck="false" />
+        <button class="submit-btn" id="submitBtn" disabled>→</button>
+      </div>
+      <div class="diff-tiles" id="diffTiles"></div>
+      <div class="input-hint" id="inputHint"></div>
+    </div>
+
+    <div class="opponent-thinking hidden" id="opponentThinking">
+      <span>Opponent is thinking</span><span class="dots">...</span>
+    </div>
+
+    <!-- WORD HISTORY -->
+    <div class="history-wrap">
+      <div class="history-label">Word chain</div>
+      <div class="history-chain" id="historyChain"></div>
+    </div>
+
+  </main>
+
+  <!-- GAME OVER SCREEN -->
+  <div id="gameOverScreen" class="game-over-screen hidden">
+    <div class="game-over-box">
+      <div class="result-icon" id="resultIcon">🏆</div>
+      <h2 class="result-title" id="resultTitle">You Win!</h2>
+      <p class="result-reason" id="resultReason"></p>
+
+      <div class="final-chain-wrap">
+        <div class="history-label">Word chain played</div>
+        <div class="history-chain" id="finalChain"></div>
+      </div>
+
+      <div class="game-over-actions">
+        <a href="/" class="btn-primary">Play Again</a>
+        <button class="btn-ghost" id="btnShareResult">Share Result</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/js/game.js"></script>
+</body>
+</html>

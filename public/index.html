@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OneLetter — Multiplayer Word Game</title>
+  <link rel="stylesheet" href="/css/style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@700;800&display=swap" rel="stylesheet" />
+</head>
+<body class="home-page">
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-inner">
+      <div class="logo-mark">OL</div>
+      <h1 class="site-title">One<span>Letter</span></h1>
+      <p class="tagline">Change <strong>one letter</strong> at a time.<br>Race your opponent. Don't get stuck.</p>
+
+      <!-- HOW IT WORKS -->
+      <div class="demo-strip">
+        <span class="demo-word">GAME</span>
+        <span class="demo-arrow">→</span>
+        <span class="demo-word"><span class="changed">C</span>AME</span>
+        <span class="demo-arrow">→</span>
+        <span class="demo-word">C<span class="changed">O</span>ME</span>
+        <span class="demo-arrow">→</span>
+        <span class="demo-word">CO<span class="changed">N</span>E</span>
+      </div>
+
+      <!-- NAME INPUT -->
+      <div class="name-row">
+        <input id="nameInput" class="input-field" type="text" maxlength="20"
+               placeholder="Your name (optional)" autocomplete="off" />
+      </div>
+
+      <!-- ACTION CARDS -->
+      <div class="action-grid">
+        <button class="action-card primary" id="btnRandom">
+          <span class="card-icon">⚡</span>
+          <span class="card-label">Play Random</span>
+          <span class="card-sub">Match with anyone online</span>
+        </button>
+        <button class="action-card" id="btnCreate">
+          <span class="card-icon">🔗</span>
+          <span class="card-label">Create Game</span>
+          <span class="card-sub">Get a link to send a friend</span>
+        </button>
+        <button class="action-card" id="btnJoin">
+          <span class="card-icon">🎮</span>
+          <span class="card-label">Join Game</span>
+          <span class="card-sub">Enter a room code</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- WAITING OVERLAY -->
+  <div id="waitingOverlay" class="overlay hidden">
+    <div class="overlay-box">
+      <div class="spinner"></div>
+      <p class="overlay-title">Looking for an opponent…</p>
+      <p class="overlay-sub">This usually takes under 30 seconds</p>
+      <button class="btn-ghost" id="btnCancelQueue">Cancel</button>
+    </div>
+  </div>
+
+  <!-- CREATE OVERLAY (shows room code + link) -->
+  <div id="createOverlay" class="overlay hidden">
+    <div class="overlay-box">
+      <p class="overlay-title">Room Created!</p>
+      <p class="overlay-sub">Share this code with a friend:</p>
+      <div class="room-code-display" id="roomCodeDisplay">—</div>
+      <p class="overlay-sub">Or copy the link:</p>
+      <div class="link-row">
+        <input id="shareLink" class="input-field small" readonly />
+        <button class="btn-copy" id="btnCopyLink">Copy</button>
+      </div>
+      <p class="overlay-sub waiting-dots">Waiting for opponent<span class="dots">...</span></p>
+      <button class="btn-ghost" id="btnCancelCreate">Cancel</button>
+    </div>
+  </div>
+
+  <!-- JOIN OVERLAY -->
+  <div id="joinOverlay" class="overlay hidden">
+    <div class="overlay-box">
+      <p class="overlay-title">Join a Game</p>
+      <input id="joinNameInput" class="input-field" type="text" maxlength="20"
+             placeholder="Your name (optional)" autocomplete="off" />
+      <input id="joinCodeInput" class="input-field large" type="text" maxlength="8"
+             placeholder="Enter room code" autocomplete="off" />
+      <p class="join-error hidden" id="joinError"></p>
+      <div class="join-buttons">
+        <button class="btn-ghost" id="btnCancelJoin">Cancel</button>
+        <button class="btn-primary" id="btnConfirmJoin">Join</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/js/main.js"></script>
+</body>
+</html>
