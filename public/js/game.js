@@ -3,7 +3,14 @@ const socket = io();
 // ── Identity ───────────────────────────────────────────────────────────────
 function getToken() {
   let t = localStorage.getItem('ol_token');
-  if (!t) { t = crypto.randomUUID(); localStorage.setItem('ol_token', t); }
+  if (!t) {
+    t = (crypto.randomUUID?.() ||
+      'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+        const r = Math.random() * 16 | 0;
+        return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+      }));
+    localStorage.setItem('ol_token', t);
+  }
   return t;
 }
 const MY_TOKEN  = getToken();
