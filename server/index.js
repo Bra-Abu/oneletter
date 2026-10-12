@@ -18,21 +18,56 @@ app.get('/game/:roomId', (req, res) =>
   res.sendFile(path.join(__dirname, '../public/game.html')));
 
 app.get('/api/online', (req, res) => {
+  if (!httpRL(req, res, 60, 60000)) return;
   res.json({ count: io.engine.clientsCount });
 });
 
 app.get('/api/stats', (req, res) => {
+  if (!httpRL(req, res, 30, 60000)) return;
   const { token } = req.query;
   if (!token) return res.json(null);
   res.json(getPlayerStats(token));
 });
 
 app.get('/api/leaderboard', (req, res) => {
+  if (!httpRL(req, res, 30, 60000)) return;
   res.json(getLeaderboard());
 });
 
 app.get('/leaderboard', (req, res) =>
   res.sendFile(path.join(__dirname, '../public/leaderboard.html')));
+
+// ── Rate limiting ──────────────────────────────────────────────────────────
+
+// Per-socket limiter: returns false if the socket has exceeded max calls
+// within windowMs for the given event name.
+function socketRL(socket, event, max, windowMs) {
+  const now = Date.now();
+  if (!socket.data._rl) socket.data._rl = {};
+  let r = socket.data._rl[event];
+  if (!r || now > r.reset) r = { count: 0, reset: now + windowMs };
+  r.count++;
+  socket.data._rl[event] = r;
+  return r.count <= max;
+}
+
+// Per-IP HTTP limiter
+const _ipLimits = new Map();
+setInterval(() => {
+  const now = Date.now();
+  for (const [k, r] of _ipLimits) if (now > r.reset) _ipLimits.delete(k);
+}, 60000);
+
+function httpRL(req, res, max = 60, windowMs = 60000) {
+  const ip = req.ip || req.socket?.remoteAddress || 'unknown';
+  const now = Date.now();
+  let r = _ipLimits.get(ip);
+  if (!r || now > r.reset) r = { count: 0, reset: now + windowMs };
+  r.count++;
+  _ipLimits.set(ip, r);
+  if (r.count > max) { res.status(429).json({ error: 'Too many requests' }); return false; }
+  return true;
+}
 
 // ── State ──────────────────────────────────────────────────────────────────
 const games            = new Map();  // roomId  -> GameRoom
@@ -139,6 +174,7 @@ io.on('connection', (socket) => {
 
   // ── Random matchmaking ─────────────────────────────────────────────────
   socket.on('join_random', ({ name, token }) => {
+    if (!socketRL(socket, 'join_random', 5, 60000)) return;
     name  = (name  || 'Anonymous').slice(0, 20);
     token = (token || uuidv4()).slice(0, 36);
     socket.data.token = token;
@@ -179,6 +215,7 @@ io.on('connection', (socket) => {
 
   // ── Solo / bot ────────────────────────────────────────────────────────
   socket.on('play_bot', ({ name, token }) => {
+    if (!socketRL(socket, 'play_bot', 5, 60000)) return;
     name  = (name  || 'Anonymous').slice(0, 20);
     token = (token || uuidv4()).slice(0, 36);
     socket.data.token = token;
@@ -200,6 +237,7 @@ io.on('connection', (socket) => {
 
   // ── Challenge link (created from game-over screen, doesn't touch socket.data) ──
   socket.on('create_challenge', ({ name, token }) => {
+    if (!socketRL(socket, 'create_challenge', 10, 60000)) return;
     name  = (name  || 'Anonymous').slice(0, 20);
     token = (token || uuidv4()).slice(0, 36);
     const roomId = uuidv4().slice(0, 8).toUpperCase();
@@ -210,6 +248,7 @@ io.on('connection', (socket) => {
 
   // ── Private game ──────────────────────────────────────────────────────
   socket.on('create_game', ({ name, token }) => {
+    if (!socketRL(socket, 'create_game', 5, 60000)) return;
     name  = (name  || 'Anonymous').slice(0, 20);
     token = (token || uuidv4()).slice(0, 36);
     socket.data.token = token;
@@ -224,6 +263,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('join_game', ({ roomId, name, token }) => {
+    if (!socketRL(socket, 'join_game', 10, 60000)) return;
     name   = (name   || 'Anonymous').slice(0, 20);
     token  = (token  || uuidv4()).slice(0, 36);
     roomId = (roomId || '').trim().toUpperCase();
@@ -298,6 +338,7 @@ io.on('connection', (socket) => {
 
   // ── Move ──────────────────────────────────────────────────────────────
   socket.on('make_move', ({ word }) => {
+    if (!socketRL(socket, 'make_move', 30, 60000)) return;
     const room = games.get(socket.data.roomId);
     if (!room) return;
     const result = room.makeMove(socket.id, word);
@@ -308,6 +349,7 @@ io.on('connection', (socket) => {
 
   // ── Give up ───────────────────────────────────────────────────────────
   socket.on('give_up', () => {
+    if (!socketRL(socket, 'give_up', 5, 60000)) return;
     const room = games.get(socket.data.roomId);
     if (!room || room.state !== 'playing') return;
     finishGame(room, socket.id, 'forfeit');
