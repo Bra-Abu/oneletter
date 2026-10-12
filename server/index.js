@@ -181,6 +181,16 @@ io.on('connection', (socket) => {
     socket.emit('game_start', room.getState());
   });
 
+  // ── Challenge link (created from game-over screen, doesn't touch socket.data) ──
+  socket.on('create_challenge', ({ name, token }) => {
+    name  = (name  || 'Anonymous').slice(0, 20);
+    token = (token || uuidv4()).slice(0, 36);
+    const roomId = uuidv4().slice(0, 8).toUpperCase();
+    const room = makeRoom(roomId, socket.id, name, token);
+    games.set(roomId, room);
+    socket.emit('challenge_created', { roomId });
+  });
+
   // ── Private game ──────────────────────────────────────────────────────
   socket.on('create_game', ({ name, token }) => {
     name  = (name  || 'Anonymous').slice(0, 20);

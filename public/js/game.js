@@ -27,6 +27,8 @@ let changedFlashIdx  = -1;    // index of last changed letter (shown briefly)
 let flashTimer       = null;
 let lastTickSec      = -1;
 let prevMyTurn       = null;  // tracks turn ownership across updates
+let challengeRoomId  = null;  // cached challenge room for share button
+let lastResult       = null;  // last game-over result
 let soundEnabled     = (() => { try { return localStorage.getItem('ol_sound') !== 'off'; } catch { return true; } })();
 
 const TURN_SECS        = 10;
@@ -158,6 +160,8 @@ socket.on('game_start', (state) => {
 
   selectedTileIdx = -1;
   changedFlashIdx = -1;
+  challengeRoomId = null;
+  lastResult      = null;
 
   // Reset rematch UI
   btnRematch.disabled = false;
@@ -564,22 +568,39 @@ function showGameOver(result) {
   btnRematch.textContent = isBot ? 'Play Again' : 'Rematch';
 
   renderHistoryFinal(result.wordHistory, result.players);
+  lastResult = result;
   gameOverScreen.classList.remove('hidden');
-
-  btnShareResult.addEventListener('click', () => {
-    const n    = (result.wordHistory?.length || 1) - 1;
-    const text = `OneLetter — we built a ${n}-word chain! Play at https://1letter.world`;
-    const fallback = () => navigator.clipboard.writeText(text).then(() => {
-      btnShareResult.textContent = '✓ Copied!';
-      setTimeout(() => { btnShareResult.textContent = 'Share'; }, 2000);
-    });
-    if (navigator.share) {
-      navigator.share({ title: 'OneLetter', text }).catch(fallback);
-    } else {
-      fallback();
-    }
-  }, { once: true });
 }
+
+// ── Challenge share ────────────────────────────────────────────────────────
+function doShare(roomId) {
+  const url  = `https://1letter.world/game/${roomId}`;
+  const text = `Think you can beat me at OneLetter? Accept my challenge 👉 ${url}`;
+  const fallback = () => navigator.clipboard.writeText(text).then(() => {
+    btnShareResult.textContent = '✓ Copied!';
+    setTimeout(() => { btnShareResult.textContent = 'Share'; }, 2000);
+  });
+  if (navigator.share) {
+    navigator.share({ title: 'OneLetter Challenge', text, url }).catch(fallback);
+  } else {
+    fallback();
+  }
+}
+
+btnShareResult.addEventListener('click', () => {
+  if (!lastResult) return;
+  if (challengeRoomId) { doShare(challengeRoomId); return; }
+  btnShareResult.textContent = 'Creating…';
+  btnShareResult.disabled = true;
+  socket.emit('create_challenge', { name: savedName, token: MY_TOKEN });
+});
+
+socket.on('challenge_created', ({ roomId }) => {
+  challengeRoomId = roomId;
+  btnShareResult.disabled = false;
+  btnShareResult.textContent = 'Share';
+  doShare(roomId);
+});
 
 function renderStats(stats) {
   statsRow.innerHTML = '';
