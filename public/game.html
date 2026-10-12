@@ -8,6 +8,15 @@
   <!-- Favicon -->
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
 
+  <!-- PWA -->
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="theme-color" content="#0b0f1a" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="OneLetter" />
+  <link rel="apple-touch-icon" href="/icon.svg" />
+
   <!-- OG / Social sharing -->
   <meta property="og:site_name"   content="OneLetter" />
   <meta property="og:type"        content="website" />
@@ -182,5 +191,6 @@
 
   <script src="/socket.io/socket.io.js"></script>
   <script src="/js/game.js"></script>
+  <script>if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js');</script>
 </body>
 </html>
