@@ -800,18 +800,75 @@ body {
 }
 .word-hero.turn-flash { animation: turn-flash .9s ease-out; border-radius: var(--radius); }
 
-/* ── Responsive ───────────────────────────────────────────────────── */
-@media (max-width: 360px) {
-  .player-name { max-width: 65px; }
-  .timer-ring-wrap { width: 60px; height: 60px; }
-  .timer-num { font-size: 1.2rem; }
-  .demo-tile { width: 54px; height: 60px; font-size: 1.5rem; }
+/* ── Mobile — up to 480px ─────────────────────────────────────────── */
+@media (max-width: 480px) {
+  /* Landing */
+  .home-page { padding: 20px 14px; }
+  .hero-inner { gap: 18px; }
   .action-grid { grid-template-columns: 1fr; }
-  .action-card.primary { flex-direction: column; }
+  .demo-tiles-wrap { padding: 16px 14px 12px; }
+
+  /* Game header — more compact so the tiles get the space */
+  .game-header { padding: 7px 10px; gap: 4px; }
+  .timer-ring-wrap { width: 60px; height: 60px; }
+  .timer-num { font-size: 1.25rem; }
+  .avatar { width: 34px; height: 34px; font-size: .85rem; }
+  .player-block { gap: 6px; }
+  .player-name { font-size: .74rem; max-width: 78px; }
+  .player-score { font-size: .6rem; }
+  .you-badge { font-size: .48rem; padding: 1px 4px; }
+  .turn-badge { font-size: .6rem; }
+
+  /* Game main */
+  .game-main { padding: 12px 12px 8px; gap: 10px; }
+  .word-hero { gap: 10px; }
+  .word-hero-label { font-size: .58rem; }
+
+  /* Input zone */
+  .input-zone { gap: 6px; }
+  .word-input { font-size: 1.2rem; letter-spacing: 3px; padding: 11px 12px; }
+  .submit-btn { padding: 13px; font-size: .95rem; }
+  .input-hint { font-size: .72rem; }
+
+  /* Thinking label */
+  .thinking-label { font-size: .75rem; padding: 5px 14px; }
+
+  /* History — single horizontal row, no wrapping */
+  .history-chain { flex-wrap: nowrap; justify-content: flex-start; }
+  .h-word { font-size: .68rem; padding: 2px 7px; }
+
+  /* Game over */
+  .go-box { padding: 18px 14px 16px; gap: 10px; }
+  .go-icon { font-size: 2.2rem; }
+  .go-title { font-size: 1.65rem; }
+  .go-reason { font-size: .78rem; }
+  .go-scoreboard { padding: 10px 12px; }
+  .go-sb-score { font-size: 1.6rem; }
+  .go-sb-avatar { width: 38px; height: 38px; font-size: .95rem; }
+  .go-sb-name { font-size: .68rem; }
+  .go-stats { padding: 8px 10px; gap: 12px; }
+  .stat-value { font-size: 1.1rem; }
+  .go-chain-label { font-size: .58rem; }
+  .go-play-again { padding: 13px; font-size: .95rem; }
 }
+
+/* ── Very small phones — up to 360px ─────────────────────────────── */
+@media (max-width: 360px) {
+  .game-header { padding: 6px 8px; }
+  .timer-ring-wrap { width: 54px; height: 54px; }
+  .timer-num { font-size: 1.1rem; }
+  .avatar { width: 30px; height: 30px; font-size: .8rem; }
+  .player-name { max-width: 60px; font-size: .7rem; }
+  .demo-tile { width: 50px; height: 56px; font-size: 1.4rem; }
+  .action-card.primary { flex-direction: column; gap: 8px; }
+}
+
+/* ── Tall screens — give tiles more breathing room ────────────────── */
 @media (min-height: 800px) {
-  .game-main { padding-top: 28px; }
+  .game-main { padding-top: 24px; gap: 20px; }
 }
+
+/* ── Wider than mobile ────────────────────────────────────────────── */
 @media (min-width: 520px) {
   .demo-tile { width: 72px; height: 78px; font-size: 1.9rem; }
   .hero-inner { gap: 28px; }
