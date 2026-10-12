@@ -147,4 +147,15 @@ function getPlayerStats(token) {
   try { return _getPlayerStats.get(token) || null; } catch { return null; }
 }
 
-module.exports = { saveMatch, updateStats, getPlayerStats };
+const _getLeaderboard = db.prepare(
+  `SELECT token, name, rating, wins, best_streak
+   FROM players
+   WHERE wins >= 3
+   ORDER BY rating DESC
+   LIMIT 20`
+);
+function getLeaderboard() {
+  try { return _getLeaderboard.all(); } catch { return []; }
+}
+
+module.exports = { saveMatch, updateStats, getPlayerStats, getLeaderboard };

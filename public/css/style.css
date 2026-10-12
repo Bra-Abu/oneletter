@@ -968,6 +968,84 @@ body {
   .hero-inner { gap: 28px; }
 }
 
+/* ── Leaderboard page ─────────────────────────────────────────────── */
+.lb-home-link {
+  display: block; text-align: center;
+  color: var(--muted); font-size: .85rem; font-weight: 500;
+  text-decoration: none; margin-top: 12px;
+  transition: color .15s;
+}
+.lb-home-link:hover { color: var(--electric-blue); }
+
+.lb-page {
+  min-height: 100vh;
+  display: flex; justify-content: center;
+  padding: 32px 16px 64px;
+}
+.lb-inner {
+  width: 100%; max-width: 620px;
+}
+.lb-back {
+  display: inline-block;
+  color: var(--muted); font-size: .85rem;
+  text-decoration: none; margin-bottom: 28px;
+  transition: color .15s;
+}
+.lb-back:hover { color: var(--text); }
+.lb-header { margin-bottom: 24px; }
+.lb-title {
+  font-family: var(--font-disp);
+  font-size: 2rem; font-weight: 800;
+  margin-bottom: .3rem;
+}
+.lb-sub { font-size: .82rem; color: var(--muted); }
+.lb-loading { display: flex; justify-content: center; padding: 64px; }
+.lb-empty {
+  text-align: center; color: var(--muted);
+  padding: 56px 0;
+}
+.lb-empty-icon { font-size: 3rem; margin-bottom: 12px; }
+.lb-empty-sub  { font-size: .82rem; margin-top: 6px; }
+.lb-not-ranked {
+  text-align: center; font-size: .82rem;
+  color: var(--muted); margin-top: 16px;
+}
+.lb-table-wrap {
+  overflow-x: auto;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+}
+.lb-table {
+  width: 100%; border-collapse: collapse;
+  font-size: .9rem;
+}
+.lb-table thead th {
+  background: var(--surface2);
+  padding: 11px 16px;
+  text-align: left;
+  font-size: .72rem; font-weight: 600;
+  text-transform: uppercase; letter-spacing: .06em;
+  color: var(--muted);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+.lb-table tbody tr {
+  border-bottom: 1px solid var(--border);
+  transition: background .12s;
+}
+.lb-table tbody tr:last-child { border-bottom: none; }
+.lb-table tbody tr:hover:not(.lb-me) { background: var(--surface2); }
+.lb-table tbody td { padding: 13px 16px; }
+.lb-col-rank { width: 48px; font-size: 1.1rem; }
+.lb-col-num  { text-align: right; }
+.lb-name-cell { font-weight: 600; display: flex; align-items: center; gap: 8px; }
+.lb-rating { font-weight: 700; color: var(--electric-blue); }
+.lb-me {
+  background: rgba(99,102,241,.1) !important;
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+.lb-me .lb-name-cell { color: var(--accent-h); }
+
 /* ── Give Up confirm modal ────────────────────────────────────────── */
 .modal-overlay {
   position: fixed; inset: 0;

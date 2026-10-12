@@ -5,7 +5,7 @@ const { v4: uuidv4 } = require('uuid');
 const path = require('path');
 const { loadWords, getNeighbours } = require('./words');
 const { GameRoom, TURN_MS } = require('./game');
-const { saveMatch, updateStats, getPlayerStats } = require('./db');
+const { saveMatch, updateStats, getPlayerStats, getLeaderboard } = require('./db');
 
 loadWords();
 
@@ -27,13 +27,20 @@ app.get('/api/stats', (req, res) => {
   res.json(getPlayerStats(token));
 });
 
+app.get('/api/leaderboard', (req, res) => {
+  res.json(getLeaderboard());
+});
+
+app.get('/leaderboard', (req, res) =>
+  res.sendFile(path.join(__dirname, '../public/leaderboard.html')));
+
 // ── State ──────────────────────────────────────────────────────────────────
 const games            = new Map();  // roomId  -> GameRoom
 const queue            = [];         // [{ socketId, name, token }]
 const disconnectTimers = new Map();  // socketId -> timeout handle
 
 const BOT_ID    = '__BOT__';
-const BOT_NAME  = 'OneBot 🤖';
+const BOT_NAME  = 'Tuff 🤖';
 const BOT_DELAY = 1500;
 
 // ── Helpers ────────────────────────────────────────────────────────────────

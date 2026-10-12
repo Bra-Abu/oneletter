@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Leaderboard — OneLetter</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <meta property="og:title"       content="OneLetter Leaderboard" />
+  <meta property="og:description" content="Top OneLetter players ranked by Elo rating." />
+  <meta property="og:image"       content="https://1letter.world/og-image.svg" />
+  <link rel="stylesheet" href="/css/style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@700;800&display=swap" rel="stylesheet" />
+</head>
+<body class="home-page">
+
+  <div class="lb-page">
+    <div class="lb-inner">
+
+      <a href="/" class="lb-back">← Back to Home</a>
+
+      <div class="lb-header">
+        <h1 class="lb-title">Leaderboard</h1>
+        <p class="lb-sub">Ranked by Elo rating &middot; Minimum 3 wins required</p>
+      </div>
+
+      <div id="lbContent">
+        <div class="lb-loading"><div class="spinner"></div></div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    const MY_TOKEN = (() => {
+      try { return localStorage.getItem('ol_token') || ''; } catch { return ''; }
+    })();
+
+    const MEDALS = ['🥇', '🥈', '🥉'];
+
+    function escHtml(s) {
+      return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+    }
+
+    async function loadLeaderboard() {
+      const el = document.getElementById('lbContent');
+      try {
+        const rows = await fetch('/api/leaderboard').then(r => r.json());
+
+        if (!rows.length) {
+          el.innerHTML = `
+            <div class="lb-empty">
+              <div class="lb-empty-icon">🏆</div>
+              <p>No ranked players yet.</p>
+              <p class="lb-empty-sub">Play 3+ PvP games to appear here.</p>
+              <a href="/" class="btn-primary" style="display:inline-block;margin-top:20px;text-decoration:none">Play Now</a>
+            </div>`;
+          return;
+        }
+
+        let myInTop = rows.some(r => r.token === MY_TOKEN);
+        let html = '<div class="lb-table-wrap"><table class="lb-table">';
+        html += `<thead><tr>
+          <th class="lb-col-rank">#</th>
+          <th>Player</th>
+          <th class="lb-col-num">Rating</th>
+          <th class="lb-col-num">Wins</th>
+          <th class="lb-col-num">Best Streak</th>
+        </tr></thead><tbody>`;
+
+        rows.forEach((row, i) => {
+          const isMe = row.token === MY_TOKEN;
+          const rank = i + 1;
+          const badge = MEDALS[i] !== undefined ? MEDALS[i] : rank;
+          html += `<tr class="${isMe ? 'lb-me' : ''}">
+            <td class="lb-col-rank">${badge}</td>
+            <td class="lb-name-cell">
+              ${escHtml(row.name)}
+              ${isMe ? '<span class="you-badge">YOU</span>' : ''}
+            </td>
+            <td class="lb-col-num lb-rating">${row.rating}</td>
+            <td class="lb-col-num">${row.wins}</td>
+            <td class="lb-col-num">${row.best_streak > 0 ? '🔥 ' + row.best_streak : row.best_streak}</td>
+          </tr>`;
+        });
+
+        html += '</tbody></table></div>';
+
+        if (!myInTop) {
+          html += `<p class="lb-not-ranked">You're not in the top 20 yet — keep playing!</p>`;
+        }
+
+        el.innerHTML = html;
+      } catch {
+        el.innerHTML = '<p class="lb-empty">Could not load leaderboard. Try refreshing.</p>';
+      }
+    }
+
+    loadLeaderboard();
+  </script>
+</body>
+</html>
