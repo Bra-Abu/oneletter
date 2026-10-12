@@ -471,6 +471,7 @@ body {
   flex: 1;
   justify-content: center;
   width: 100%;
+  position: relative;
 }
 .word-hero-label {
   font-size: .68rem;
@@ -478,6 +479,35 @@ body {
   text-transform: uppercase;
   letter-spacing: 1.5px;
   color: var(--muted);
+  transition: color .3s;
+}
+.word-hero-label.my-turn {
+  color: var(--electric-blue);
+}
+
+/* One-time tap hint */
+.tap-hint {
+  position: absolute;
+  bottom: -2px;
+  left: 50%; transform: translateX(-50%);
+  background: rgba(56,189,248,.12);
+  border: 1px solid rgba(56,189,248,.35);
+  border-radius: 20px;
+  padding: 5px 14px;
+  font-size: .72rem; font-weight: 600;
+  color: var(--electric-blue);
+  white-space: nowrap;
+  pointer-events: none;
+  animation: hint-in .35s ease;
+}
+.tap-hint.fade-out { animation: hint-out .5s ease forwards; }
+@keyframes hint-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(6px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+@keyframes hint-out {
+  from { opacity: 1; }
+  to   { opacity: 0; transform: translateX(-50%) translateY(4px); }
 }
 
 /* Tiles */

@@ -29,6 +29,7 @@ let lastTickSec      = -1;
 let prevMyTurn       = null;  // tracks turn ownership across updates
 let challengeRoomId  = null;  // cached challenge room for share button
 let lastResult       = null;  // last game-over result
+let tapHintShown     = false; // one-time tap hint per session
 let soundEnabled     = (() => { try { return localStorage.getItem('ol_sound') !== 'off'; } catch { return true; } })();
 
 const TURN_SECS        = 10;
@@ -103,6 +104,8 @@ const btnShareResult   = $('btnShareResult');
 const btnRematch       = $('btnRematch');
 const rematchStatus    = $('rematchStatus');
 const wordHeroSection  = $('wordHeroSection');
+const wordHeroLabel    = $('wordHeroLabel');
+const tapHint          = $('tapHint');
 const youBadge0        = $('youBadge0');
 const youBadge1        = $('youBadge1');
 const ariaAnnouncer    = $('ariaAnnouncer');
@@ -357,6 +360,28 @@ function applyTurnUI(state) {
 
   turnLabel.textContent = isMyTurn ? 'Your turn' : `${curPlayer?.name || 'Opponent'}'s turn`;
   turnLabel.classList.toggle('my-turn', isMyTurn);
+
+  // Dynamic label teaches the tap mechanic
+  if (wordHeroLabel) {
+    wordHeroLabel.textContent = isMyTurn ? 'Tap a letter — or type below' : 'Change one letter';
+    wordHeroLabel.classList.toggle('my-turn', isMyTurn);
+  }
+
+  // One-time tap hint for new players on their very first turn
+  if (isMyTurn && !tapHintShown) {
+    try { tapHintShown = !!localStorage.getItem('ol_tap_hint_seen'); } catch {}
+    if (!tapHintShown) {
+      tapHintShown = true;
+      try { localStorage.setItem('ol_tap_hint_seen', '1'); } catch {}
+      if (tapHint) {
+        tapHint.classList.remove('hidden');
+        setTimeout(() => {
+          tapHint.classList.add('fade-out');
+          setTimeout(() => tapHint.classList.add('hidden'), 500);
+        }, 3500);
+      }
+    }
+  }
 
   // Flash the word area and announce when turn switches to/from me
   if (prevMyTurn !== null && isMyTurn !== prevMyTurn) {
