@@ -140,4 +140,11 @@ function updateStats(p1Token, p1Name, p2Token, p2Name, winnerToken, botGame = fa
   return result;
 }
 
-module.exports = { saveMatch, updateStats };
+const _getPlayerStats = db.prepare(
+  `SELECT rating, wins, losses, win_streak, best_streak FROM players WHERE token = ?`
+);
+function getPlayerStats(token) {
+  try { return _getPlayerStats.get(token) || null; } catch { return null; }
+}
+
+module.exports = { saveMatch, updateStats, getPlayerStats };

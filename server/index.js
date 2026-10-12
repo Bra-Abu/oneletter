@@ -5,7 +5,7 @@ const { v4: uuidv4 } = require('uuid');
 const path = require('path');
 const { loadWords, getNeighbours } = require('./words');
 const { GameRoom, TURN_MS } = require('./game');
-const { saveMatch, updateStats } = require('./db');
+const { saveMatch, updateStats, getPlayerStats } = require('./db');
 
 loadWords();
 
@@ -16,6 +16,16 @@ const io = new Server(server, { cors: { origin: '*' } });
 app.use(express.static(path.join(__dirname, '../public')));
 app.get('/game/:roomId', (req, res) =>
   res.sendFile(path.join(__dirname, '../public/game.html')));
+
+app.get('/api/online', (req, res) => {
+  res.json({ count: io.engine.clientsCount });
+});
+
+app.get('/api/stats', (req, res) => {
+  const { token } = req.query;
+  if (!token) return res.json(null);
+  res.json(getPlayerStats(token));
+});
 
 // ── State ──────────────────────────────────────────────────────────────────
 const games            = new Map();  // roomId  -> GameRoom

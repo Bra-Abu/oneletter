@@ -125,11 +125,12 @@ class GameRoom {
       players:         this.players,
       currentWord:     this.currentWord,
       wordHistory:     this.wordHistory,
-      currentPlayerId: this.getCurrentPlayer()?.id || null,
-      state:           this.state,
-      timerEndsAt:     this.timerEndsAt,
-      isBot:           this.isBot,
-      scores:          this.scores,
+      currentPlayerId:  this.getCurrentPlayer()?.id || null,
+      state:            this.state,
+      // Send remaining ms so client avoids server/client clock-skew issues
+      timerRemaining:   this.timerEndsAt ? Math.max(0, this.timerEndsAt - Date.now()) : TURN_MS,
+      isBot:            this.isBot,
+      scores:           this.scores,
     };
   }
 }

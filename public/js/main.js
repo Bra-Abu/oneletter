@@ -195,6 +195,32 @@ socket.on('error', ({ message }) => {
   alert(message);
 });
 
+// ── Lobby stats ───────────────────────────────────────────────────────────
+async function refreshOnlineCount() {
+  try {
+    const { count } = await fetch('/api/online').then(r => r.json());
+    const el = document.getElementById('onlineCount');
+    if (el) el.textContent = count;
+  } catch {}
+}
+
+async function loadPlayerStats() {
+  try {
+    const stats = await fetch(`/api/stats?token=${encodeURIComponent(MY_TOKEN)}`).then(r => r.json());
+    if (!stats || stats.best_streak < 1) return;
+    const val  = document.getElementById('bestStreakVal');
+    const stat = document.getElementById('streakStat');
+    const sep  = document.getElementById('streakSep');
+    if (val)  val.textContent  = `${stats.best_streak} win${stats.best_streak !== 1 ? 's' : ''}`;
+    if (stat) stat.style.display = 'flex';
+    if (sep)  sep.style.display  = 'block';
+  } catch {}
+}
+
+refreshOnlineCount();
+loadPlayerStats();
+setInterval(refreshOnlineCount, 20000);
+
 // ── Demo tile animation ───────────────────────────────────────────────────
 const DEMO_CHAIN = [
   'GAME','CAME','COME','CONE','BONE','BORE','CORE','CARE',
