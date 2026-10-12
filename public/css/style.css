@@ -316,6 +316,23 @@ body {
   background: var(--bg);
 }
 
+/* ── Top timer bar ─────────────────────────────────────────────────── */
+.top-timer-bar {
+  position: fixed; top: 0; left: 0; right: 0;
+  height: 3px;
+  background: var(--surface2);
+  z-index: 999;
+}
+.top-timer-fill {
+  height: 100%;
+  width: 100%;
+  background: var(--accent);
+  transform-origin: left;
+  transition: background .4s;
+}
+.top-timer-fill.warning { background: var(--amber); }
+.top-timer-fill.danger  { background: var(--red); box-shadow: 0 0 6px var(--red); }
+
 /* ── Game header ───────────────────────────────────────────────────── */
 .game-header {
   display: grid;

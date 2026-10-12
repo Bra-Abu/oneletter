@@ -103,6 +103,8 @@ const goScoreboard     = $('goScoreboard');
 const btnShareResult   = $('btnShareResult');
 const btnRematch       = $('btnRematch');
 const rematchStatus    = $('rematchStatus');
+const topTimerBar      = $('topTimerBar');
+const topTimerFill     = $('topTimerFill');
 const wordHeroSection  = $('wordHeroSection');
 const wordHeroLabel    = $('wordHeroLabel');
 const tapHint          = $('tapHint');
@@ -168,6 +170,7 @@ socket.on('game_start', (state) => {
   waitingState.classList.add('hidden');
   gameOverScreen.classList.add('hidden');
   gameMain.classList.remove('hidden');
+  topTimerBar?.classList.remove('hidden');
 
   selectedTileIdx = -1;
   changedFlashIdx = -1;
@@ -229,6 +232,7 @@ socket.on('move_error', ({ error }) => {
 
 socket.on('game_over', (result) => {
   clearTimer();
+  topTimerBar?.classList.add('hidden');
   showGameOver(result);
 });
 
@@ -531,13 +535,27 @@ function clearTimer() {
 function tick(endsAt) {
   const rem  = Math.max(0, (endsAt - Date.now()) / 1000);
   const secs = Math.ceil(rem);
-  timerText.textContent = secs;
-  timerRing.style.strokeDashoffset = RING_CIRC * (1 - rem / TURN_SECS);
+  const pct  = rem / TURN_SECS;
 
+  timerText.textContent = secs;
+  timerRing.style.strokeDashoffset = RING_CIRC * (1 - pct);
+
+  // Top bar
+  if (topTimerFill) topTimerFill.style.transform = `scaleX(${pct})`;
+
+  // Colour states — ring and bar in sync
   timerRing.classList.remove('warning', 'danger');
   timerWrap?.classList.remove('urgent');
-  if (rem <= 3)      { timerRing.classList.add('danger'); timerWrap?.classList.add('urgent'); }
-  else if (rem <= 6) { timerRing.classList.add('warning'); }
+  if (topTimerFill) topTimerFill.classList.remove('warning', 'danger');
+
+  if (rem <= 3) {
+    timerRing.classList.add('danger');
+    timerWrap?.classList.add('urgent');
+    topTimerFill?.classList.add('danger');
+  } else if (rem <= 6) {
+    timerRing.classList.add('warning');
+    topTimerFill?.classList.add('warning');
+  }
 
   if (rem <= 4 && secs !== lastTickSec && secs > 0) {
     lastTickSec = secs; SFX.tick();
