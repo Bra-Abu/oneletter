@@ -163,7 +163,7 @@ socket.on('game_start', (state) => {
   renderWord(state.currentWord, -1, -1);
   renderHistory(state.wordHistory, state.players, false);
   applyTurnUI(state);
-  startTimer(state.timerEndsAt);
+  startTimer(Date.now() + state.timerRemaining);
 });
 
 socket.on('game_update', (state) => {
@@ -182,7 +182,7 @@ socket.on('game_update', (state) => {
   renderHistory(state.wordHistory, state.players, true);
   updateScores(state);
   applyTurnUI(state);
-  restartTimer(state.timerEndsAt);
+  restartTimer(Date.now() + state.timerRemaining);
   clearInput();
   selectedTileIdx = -1;
   SFX.move();
@@ -516,12 +516,15 @@ function showGameOver(result) {
   btnShareResult.addEventListener('click', () => {
     const n    = (result.wordHistory?.length || 1) - 1;
     const text = `OneLetter — we built a ${n}-word chain! Play at ${location.origin}`;
-    navigator.share
-      ? navigator.share({ title: 'OneLetter', text }).catch(() => {})
-      : navigator.clipboard.writeText(text).then(() => {
-          btnShareResult.textContent = '✓ Copied!';
-          setTimeout(() => { btnShareResult.textContent = 'Share'; }, 2000);
-        });
+    const fallback = () => navigator.clipboard.writeText(text).then(() => {
+      btnShareResult.textContent = '✓ Copied!';
+      setTimeout(() => { btnShareResult.textContent = 'Share'; }, 2000);
+    });
+    if (navigator.share) {
+      navigator.share({ title: 'OneLetter', text }).catch(fallback);
+    } else {
+      fallback();
+    }
   }, { once: true });
 }
 
