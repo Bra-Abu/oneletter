@@ -36,6 +36,9 @@ db.exec(`
   );
 `);
 
+// Add best_chain column to existing databases that predate it
+try { db.exec(`ALTER TABLE players ADD COLUMN best_chain INTEGER NOT NULL DEFAULT 0`); } catch {}
+
 // ── Matches ─────────────────────────────────────────────────────────────────
 
 const _insertMatch = db.prepare(`
@@ -83,6 +86,7 @@ const _updatePlayer = db.prepare(`
     win_streak  = @win_streak,
     loss_streak = @loss_streak,
     best_streak = @best_streak,
+    best_chain  = @best_chain,
     updated_at  = @now
   WHERE token = @token
 `);
@@ -95,7 +99,7 @@ function eloChange(myRating, opponentRating, won, K = 32) {
 // Upsert both players, compute Elo, persist, return stat snapshots.
 // Returns { [token]: { rating, ratingChange, wins, losses, winStreak, bestStreak } }
 // Skip Elo for bot games (pass botGame = true).
-function updateStats(p1Token, p1Name, p2Token, p2Name, winnerToken, botGame = false) {
+function updateStats(p1Token, p1Name, p2Token, p2Name, winnerToken, botGame = false, chainLength = 0) {
   const now = Date.now();
   _upsertPlayer.run({ token: p1Token, name: p1Name, now });
   if (!botGame) _upsertPlayer.run({ token: p2Token, name: p2Name, now });
@@ -111,10 +115,11 @@ function updateStats(p1Token, p1Name, p2Token, p2Name, winnerToken, botGame = fa
   ]) {
     const won = token === winnerToken;
     const delta = botGame ? 0 : eloChange(row.rating, oppRating, won);
-    const newRating = Math.max(100, row.rating + delta);
+    const newRating  = Math.max(100, row.rating + delta);
     const winStreak  = won ? row.win_streak  + 1 : 0;
     const lossStreak = won ? 0 : row.loss_streak + 1;
     const bestStreak = Math.max(row.best_streak, winStreak);
+    const bestChain  = Math.max(row.best_chain || 0, chainLength);
 
     _updatePlayer.run({
       token,
@@ -124,16 +129,19 @@ function updateStats(p1Token, p1Name, p2Token, p2Name, winnerToken, botGame = fa
       win_streak:  winStreak,
       loss_streak: lossStreak,
       best_streak: bestStreak,
+      best_chain:  bestChain,
       now,
     });
 
     result[token] = {
-      rating:       newRating,
-      ratingChange: delta,
-      wins:         row.wins   + (won ? 1 : 0),
-      losses:       row.losses + (won ? 0 : 1),
+      rating:          newRating,
+      ratingChange:    delta,
+      wins:            row.wins   + (won ? 1 : 0),
+      losses:          row.losses + (won ? 0 : 1),
       winStreak,
       bestStreak,
+      bestChain,
+      isNewBestChain:  bestChain > (row.best_chain || 0) && chainLength > 0,
     };
   }
 

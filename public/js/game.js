@@ -34,7 +34,7 @@ let soundEnabled     = (() => { try { return localStorage.getItem('ol_sound') !=
 
 const TURN_SECS        = 10;
 const RING_CIRC        = 188.5; // 2π × 30
-const BOT_NAME         = 'OneBot 🤖';
+const BOT_NAME         = 'Tuff';
 
 // ── Audio ──────────────────────────────────────────────────────────────────
 let audioCtx = null;
@@ -647,6 +647,11 @@ function showGameOver(result) {
     </div>
   `;
 
+  // Rounds played
+  const rounds = result.wordHistory?.length || 0;
+  const goRounds = $('goRounds');
+  if (goRounds) goRounds.innerHTML = `<strong>${rounds}</strong> round${rounds !== 1 ? 's' : ''} played`;
+
   // Button label: bot game = "Play Again", PvP = "Rematch"
   const isBot = players.some(p => p.name === BOT_NAME);
   btnRematch.textContent = isBot ? 'Play Again' : 'Rematch';
@@ -688,10 +693,12 @@ socket.on('challenge_created', ({ roomId }) => {
 
 function renderStats(stats) {
   statsRow.innerHTML = '';
+  const chainLabel = stats.isNewBestChain ? '🔥 Best Chain' : 'Best Chain';
   const items = [
-    { l: 'Rating', v: stats.rating,       signed: false },
-    { l: 'Change', v: stats.ratingChange, signed: true  },
-    { l: 'Wins',   v: stats.wins,         signed: false },
+    { l: 'Rating',     v: stats.rating,       signed: false },
+    { l: 'Change',     v: stats.ratingChange, signed: true  },
+    { l: 'Wins',       v: stats.wins,         signed: false },
+    { l: chainLabel,   v: stats.bestChain,    signed: false },
     { l: 'Streak', v: stats.winStreak,    signed: false },
   ];
   items.forEach(({ l, v, signed }) => {

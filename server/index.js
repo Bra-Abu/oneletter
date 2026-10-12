@@ -122,7 +122,8 @@ function finishGame(room, loserId, reason) {
       p0.token, p0.name,
       isBotGame ? '__bot__' : p1.token, p1.name,
       winnerToken,
-      isBotGame
+      isBotGame,
+      room.wordHistory.length
     );
 
     for (const player of room.players) {

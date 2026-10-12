@@ -847,6 +847,14 @@ body {
   letter-spacing: 2px; flex-shrink: 0;
 }
 
+/* Rounds played */
+.go-rounds {
+  text-align: center;
+  font-size: .85rem; color: var(--muted);
+  margin: 6px 0 2px;
+}
+.go-rounds strong { color: var(--text); font-weight: 700; }
+
 /* Rating / streak stats */
 .go-stats {
   display: flex; gap: 16px; flex-wrap: wrap;
