@@ -131,12 +131,20 @@ soundToggle.addEventListener('click', () => {
   refreshSoundUI();
 });
 
-// ── Copy link ──────────────────────────────────────────────────────────────
-btnGameCopyLink?.addEventListener('click', () => {
-  navigator.clipboard.writeText(gameLinkInput.value).then(() => {
-    btnGameCopyLink.textContent = '✓';
-    setTimeout(() => { btnGameCopyLink.textContent = 'Copy'; }, 2000);
-  });
+// ── Share link ─────────────────────────────────────────────────────────────
+btnGameCopyLink?.addEventListener('click', async () => {
+  const url = gameLinkInput.value;
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: 'OneLetter', text: 'Play OneLetter with me! 🎮', url });
+      return;
+    } catch {}
+  }
+  try {
+    await navigator.clipboard.writeText(url);
+    btnGameCopyLink.textContent = '✓ Copied!';
+    setTimeout(() => { btnGameCopyLink.textContent = '📤 Share Link'; }, 2000);
+  } catch {}
 });
 
 // ── Socket events ──────────────────────────────────────────────────────────

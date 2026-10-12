@@ -496,6 +496,7 @@ body {
   color: var(--muted);
 }
 .overlay-state .room-code-display { font-size: 1.6rem; letter-spacing: 6px; }
+.share-game-btn { margin-top: 8px; }
 
 /* ── Main game area ────────────────────────────────────────────────── */
 .game-main {
