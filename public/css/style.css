@@ -2,20 +2,21 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --bg:        #0b0f1a;
-  --surface:   #141926;
-  --surface2:  #1e2639;
-  --border:    #2a3450;
-  --accent:    #6366f1;
-  --accent-h:  #818cf8;
-  --green:     #22c55e;
-  --red:       #ef4444;
-  --amber:     #f59e0b;
-  --text:      #f1f5f9;
-  --muted:     #64748b;
-  --radius:    12px;
-  --font:      'Inter', sans-serif;
-  --font-disp: 'Space Grotesk', sans-serif;
+  --bg:            #0b0f1a;
+  --surface:       #141926;
+  --surface2:      #1e2639;
+  --border:        #2a3450;
+  --accent:        #6366f1;
+  --accent-h:      #818cf8;
+  --electric-blue: #38bdf8;
+  --green:         #22c55e;
+  --red:           #ef4444;
+  --amber:         #f59e0b;
+  --text:          #f1f5f9;
+  --muted:         #64748b;
+  --radius:        12px;
+  --font:          'Inter', sans-serif;
+  --font-disp:     'Space Grotesk', sans-serif;
   /* avatar colours */
   --p0-color:  #6366f1;
   --p1-color:  #22c55e;
@@ -172,13 +173,25 @@ body {
 .hero-inner { display: flex; flex-direction: column; align-items: center; gap: 24px; }
 
 .logo-mark {
-  width: 58px; height: 58px;
-  background: linear-gradient(135deg, var(--accent), #7c3aed);
-  border-radius: 16px;
+  display: flex; gap: 5px;
+  background: transparent; border-radius: 0;
+  box-shadow: none; width: auto; height: auto; padding: 0;
+}
+.logo-tile {
+  width: 34px; height: 38px;
+  background: var(--surface2);
+  border: 2px solid rgba(255,255,255,.12);
+  border-radius: 9px;
   display: flex; align-items: center; justify-content: center;
-  font-family: var(--font-disp); font-size: 19px; font-weight: 800;
-  color: #fff; letter-spacing: -1px;
-  box-shadow: 0 4px 20px rgba(99,102,241,.4);
+  font-family: var(--font-disp); font-size: 16px; font-weight: 800;
+  color: var(--text); letter-spacing: 0;
+  box-shadow: 0 2px 8px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.06);
+}
+.logo-tile-changed {
+  background: rgba(56,189,248,.12);
+  border-color: var(--electric-blue);
+  color: var(--electric-blue);
+  box-shadow: 0 2px 16px rgba(56,189,248,.35), inset 0 1px 0 rgba(56,189,248,.1);
 }
 .site-title {
   font-family: var(--font-disp);
@@ -217,9 +230,10 @@ body {
   transition: border-color .3s, background .3s, color .3s;
 }
 .demo-tile.flip {
-  background: rgba(99,102,241,.2);
-  border-color: var(--accent-h);
-  color: var(--accent-h);
+  background: rgba(56,189,248,.18);
+  border-color: var(--electric-blue);
+  color: var(--electric-blue);
+  box-shadow: 0 0 14px rgba(56,189,248,.3);
   animation: demo-flip .5s cubic-bezier(.34,1.56,.64,1);
 }
 @keyframes demo-flip {
@@ -517,10 +531,10 @@ body {
   to   { box-shadow: 0 0 0 5px rgba(99,102,241,.4), 0 6px 22px rgba(99,102,241,.45); }
 }
 
-/* Just-changed letter (amber flash, fades to normal) */
+/* Just-changed letter — electric blue flash, fades to normal */
 @keyframes changed-flash {
-  0%   { background: rgba(245,158,11,.35); border-color: var(--amber); color: var(--amber); transform: scale(1.14) translateY(-4px); }
-  60%  { background: rgba(245,158,11,.15); border-color: rgba(245,158,11,.5); color: var(--text); }
+  0%   { background: rgba(56,189,248,.35); border-color: var(--electric-blue); color: var(--electric-blue); transform: scale(1.14) translateY(-4px); box-shadow: 0 0 18px rgba(56,189,248,.5); }
+  60%  { background: rgba(56,189,248,.12); border-color: rgba(56,189,248,.4);  color: var(--text); box-shadow: none; }
   100% { background: var(--surface2); border-color: var(--border); color: var(--text); transform: scale(1); }
 }
 .tile.just-changed {
@@ -552,9 +566,9 @@ body {
   color: var(--muted);
 }
 .diff-tile.changed {
-  background: rgba(99,102,241,.18);
-  border-color: var(--accent);
-  color: var(--accent-h);
+  background: rgba(56,189,248,.15);
+  border-color: var(--electric-blue);
+  color: var(--electric-blue);
 }
 
 /* ── Input zone ────────────────────────────────────────────────────── */
