@@ -162,6 +162,7 @@ socket.on('game_start', (state) => {
   changedFlashIdx = -1;
   challengeRoomId = null;
   lastResult      = null;
+  clearRematchTimer();
 
   // Reset rematch UI
   btnRematch.disabled = false;
@@ -517,12 +518,25 @@ btnGiveUp.addEventListener('click', () => {
 });
 
 // ── Rematch ────────────────────────────────────────────────────────────────
+let rematchTimer = null;
+
+function clearRematchTimer() {
+  if (rematchTimer) { clearTimeout(rematchTimer); rematchTimer = null; }
+}
+
 btnRematch.addEventListener('click', () => {
   btnRematch.disabled = true;
   btnRematch.textContent = 'Waiting…';
   rematchStatus.textContent = 'Waiting for opponent to accept…';
   rematchStatus.classList.remove('hidden');
   socket.emit('rematch_request');
+
+  // Reset if game_start never arrives within 20 s
+  rematchTimer = setTimeout(() => {
+    btnRematch.disabled = false;
+    btnRematch.textContent = lastResult?.players?.some(p => p.name === BOT_NAME) ? 'Play Again' : 'Rematch';
+    rematchStatus.textContent = 'Opponent didn\'t respond.';
+  }, 20000);
 });
 
 // ── Game over ──────────────────────────────────────────────────────────────
