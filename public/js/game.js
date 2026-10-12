@@ -26,6 +26,7 @@ let selectedTileIdx  = -1;
 let changedFlashIdx  = -1;    // index of last changed letter (shown briefly)
 let flashTimer       = null;
 let lastTickSec      = -1;
+let prevMyTurn       = null;  // tracks turn ownership across updates
 let soundEnabled     = (() => { try { return localStorage.getItem('ol_sound') !== 'off'; } catch { return true; } })();
 
 const TURN_SECS        = 10;
@@ -99,6 +100,10 @@ const goScoreboard     = $('goScoreboard');
 const btnShareResult   = $('btnShareResult');
 const btnRematch       = $('btnRematch');
 const rematchStatus    = $('rematchStatus');
+const wordHeroSection  = $('wordHeroSection');
+const youBadge0        = $('youBadge0');
+const youBadge1        = $('youBadge1');
+const ariaAnnouncer    = $('ariaAnnouncer');
 
 // ── Connect ────────────────────────────────────────────────────────────────
 const roomId = location.pathname.split('/').pop().toUpperCase();
@@ -240,6 +245,12 @@ function renderHeader(state) {
   avatar1.textContent = avatarLetter(p1?.name || BOT_NAME);
   pname0.textContent  = p0?.name  || '—';
   pname1.textContent  = p1?.name  || 'Waiting…';
+  // Mark which side is "me"
+  const myIdx = state.players.findIndex(p => p.id === myId);
+  youBadge0?.classList.toggle('hidden', myIdx !== 0);
+  youBadge1?.classList.toggle('hidden', myIdx !== 1);
+  playerBlock0.setAttribute('aria-label', myIdx === 0 ? 'You' : (p0?.name || 'Player 1'));
+  playerBlock1.setAttribute('aria-label', myIdx === 1 ? 'You' : (p1?.name || 'Player 2'));
   updateScores(state);
 }
 
@@ -324,21 +335,38 @@ function renderHistory(history, players, animateNew = false) {
 }
 
 function applyTurnUI(state) {
-  const isMyTurn   = state.currentPlayerId === myId;
-  const curPlayer  = state.players.find(p => p.id === state.currentPlayerId);
+  const isMyTurn  = state.currentPlayerId === myId;
+  const curPlayer = state.players.find(p => p.id === state.currentPlayerId);
 
   // Active player avatar glow
   playerBlock0.classList.toggle('active', state.players[0]?.id === state.currentPlayerId);
   playerBlock1.classList.toggle('active', state.players[1]?.id === state.currentPlayerId);
 
   turnLabel.textContent = isMyTurn ? 'Your turn' : `${curPlayer?.name || 'Opponent'}'s turn`;
+  turnLabel.classList.toggle('my-turn', isMyTurn);
+
+  // Flash the word area and announce when turn switches to/from me
+  if (prevMyTurn !== null && isMyTurn !== prevMyTurn) {
+    if (isMyTurn) {
+      wordHeroSection?.classList.remove('turn-flash');
+      void wordHeroSection?.offsetWidth;
+      wordHeroSection?.classList.add('turn-flash');
+      setTimeout(() => wordHeroSection?.classList.remove('turn-flash'), 900);
+      if (ariaAnnouncer) ariaAnnouncer.textContent = 'Your turn — change one letter.';
+    } else {
+      if (ariaAnnouncer) ariaAnnouncer.textContent = `${curPlayer?.name || 'Opponent'}'s turn.`;
+    }
+  }
+  prevMyTurn = isMyTurn;
 
   if (isMyTurn) {
     wordInput.disabled = false;
+    wordInput.removeAttribute('aria-disabled');
     opponentThinking.classList.add('hidden');
     if (!wordInput.value) wordInput.focus();
   } else {
     wordInput.disabled = true;
+    wordInput.setAttribute('aria-disabled', 'true');
     submitBtn.disabled = true;
     opponentThinking.classList.remove('hidden');
     clearInput();

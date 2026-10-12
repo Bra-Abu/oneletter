@@ -50,15 +50,49 @@ function loadName() {
 nameInput.value = loadName();
 
 // ── Random match ────────────────────────────────────────────────────────
+let queueTimer = null;
+const queueSub = waitingOverlay.querySelector('.overlay-sub');
+
+function startQueueTimer() {
+  clearQueueTimer();
+  queueTimer = setTimeout(() => {
+    if (queueSub) queueSub.textContent = 'No opponents online right now.';
+    const box = waitingOverlay.querySelector('.overlay-box');
+    if (box && !box.querySelector('.queue-bot-btn')) {
+      const b = document.createElement('button');
+      b.className = 'btn-ghost queue-bot-btn';
+      b.textContent = 'Play vs Bot instead';
+      b.addEventListener('click', () => {
+        clearQueueTimer();
+        socket.emit('cancel_queue');
+        waitingOverlay.classList.add('hidden');
+        saveName(getName());
+        sessionStorage.setItem('ol_name', getName());
+        socket.emit('play_bot', { name: getName(), token: MY_TOKEN });
+      });
+      box.insertBefore(b, btnCancelQueue);
+    }
+  }, 28000);
+}
+
+function clearQueueTimer() {
+  if (queueTimer) { clearTimeout(queueTimer); queueTimer = null; }
+  waitingOverlay.querySelector('.queue-bot-btn')?.remove();
+  if (queueSub) queueSub.textContent = 'This usually takes under 30 seconds';
+}
+
 btnRandom.addEventListener('click', () => {
   saveName(getName());
+  clearQueueTimer();
   waitingOverlay.classList.remove('hidden');
   socket.emit('join_random', { name: getName(), token: MY_TOKEN });
+  startQueueTimer();
 });
 
 btnCancelQueue.addEventListener('click', () => {
   socket.emit('cancel_queue');
   waitingOverlay.classList.add('hidden');
+  clearQueueTimer();
 });
 
 // ── Bot / solo game ──────────────────────────────────────────────────────
@@ -126,6 +160,7 @@ socket.on('waiting', () => {
 
 socket.on('queue_cancelled', () => {
   waitingOverlay.classList.add('hidden');
+  clearQueueTimer();
 });
 
 socket.on('queue_error', ({ message }) => {
@@ -139,9 +174,16 @@ socket.on('game_created', ({ roomId }) => {
 });
 
 socket.on('game_start', (state) => {
-  // Store name so game.js can use it after navigation
+  clearQueueTimer();
   sessionStorage.setItem('ol_name', getName());
   window.location.href = `/game/${state.roomId}`;
+});
+
+socket.on('disconnect', () => {
+  if (!waitingOverlay.classList.contains('hidden')) {
+    clearQueueTimer();
+    if (queueSub) queueSub.textContent = 'Connection lost — reconnecting…';
+  }
 });
 
 socket.on('join_error', ({ message }) => {
