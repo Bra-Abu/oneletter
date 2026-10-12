@@ -18,7 +18,6 @@ const MY_TOKEN = getToken();
 
 const nameInput        = document.getElementById('nameInput');
 const btnRandom        = document.getElementById('btnRandom');
-const btnBot           = document.getElementById('btnBot');
 const btnCreate        = document.getElementById('btnCreate');
 const btnJoin          = document.getElementById('btnJoin');
 const waitingOverlay   = document.getElementById('waitingOverlay');
@@ -93,13 +92,6 @@ btnCancelQueue.addEventListener('click', () => {
   socket.emit('cancel_queue');
   waitingOverlay.classList.add('hidden');
   clearQueueTimer();
-});
-
-// ── Bot / solo game ──────────────────────────────────────────────────────
-btnBot.addEventListener('click', () => {
-  saveName(getName());
-  sessionStorage.setItem('ol_name', getName());
-  socket.emit('play_bot', { name: getName(), token: MY_TOKEN });
 });
 
 // ── Create private game ──────────────────────────────────────────────────
