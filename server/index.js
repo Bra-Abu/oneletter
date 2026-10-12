@@ -75,7 +75,7 @@ const queue            = [];         // [{ socketId, name, token }]
 const disconnectTimers = new Map();  // socketId -> timeout handle
 
 const BOT_ID    = '__BOT__';
-const BOT_NAME  = 'Tuff 🤖';
+const BOT_NAME  = 'Tuff';
 const BOT_DELAY = 1500;
 
 // ── Helpers ────────────────────────────────────────────────────────────────
