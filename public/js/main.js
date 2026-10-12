@@ -71,13 +71,13 @@ function startQueueTimer() {
       });
       box.insertBefore(b, btnCancelQueue);
     }
-  }, 28000);
+  }, 15000);
 }
 
 function clearQueueTimer() {
   if (queueTimer) { clearTimeout(queueTimer); queueTimer = null; }
   waitingOverlay.querySelector('.queue-bot-btn')?.remove();
-  if (queueSub) queueSub.textContent = 'This usually takes under 30 seconds';
+  if (queueSub) queueSub.textContent = 'Looking for someone to play with…';
 }
 
 btnRandom.addEventListener('click', () => {
