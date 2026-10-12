@@ -95,6 +95,7 @@ const resultTitle      = $('resultTitle');
 const resultReason     = $('resultReason');
 const statsRow         = $('statsRow');
 const finalChain       = $('finalChain');
+const goScoreboard     = $('goScoreboard');
 const btnShareResult   = $('btnShareResult');
 const btnRematch       = $('btnRematch');
 const rematchStatus    = $('rematchStatus');
@@ -509,6 +510,30 @@ function showGameOver(result) {
   };
   resultReason.textContent = reasons[result.reason] || '';
   statsRow.innerHTML = '';
+
+  // Scoreboard — both players with session win counts
+  const players = result.players || [];
+  const scores  = result.scores  || [0, 0];
+  const p0 = players[0], p1 = players[1];
+  const p0Won = result.winnerName === p0?.name;
+  const p1Won = result.winnerName === p1?.name;
+  goScoreboard.innerHTML = `
+    <div class="go-sb-player${p0Won ? ' winner' : ''}">
+      <div class="go-sb-avatar p0">${(p0?.name || '?').charAt(0).toUpperCase()}</div>
+      <div class="go-sb-score">${scores[0]}</div>
+      <div class="go-sb-name">${p0?.name || '—'}</div>
+    </div>
+    <div class="go-sb-vs">VS</div>
+    <div class="go-sb-player${p1Won ? ' winner' : ''}">
+      <div class="go-sb-avatar p1">${(p1?.name || '?').charAt(0).toUpperCase()}</div>
+      <div class="go-sb-score">${scores[1]}</div>
+      <div class="go-sb-name">${p1?.name || '—'}</div>
+    </div>
+  `;
+
+  // Button label: bot game = "Play Again", PvP = "Rematch"
+  const isBot = players.some(p => p.name === BOT_NAME);
+  btnRematch.textContent = isBot ? 'Play Again' : 'Rematch';
 
   renderHistoryFinal(result.wordHistory, result.players);
   gameOverScreen.classList.remove('hidden');

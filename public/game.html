@@ -107,23 +107,34 @@
   <!-- ── GAME OVER ──────────────────────────────────────────────────────── -->
   <div id="gameOverScreen" class="go-screen hidden">
     <div class="go-box">
+
+      <!-- Result -->
       <div class="go-icon" id="resultIcon">🏆</div>
       <h2 class="go-title" id="resultTitle">You Win!</h2>
       <p class="go-reason" id="resultReason"></p>
 
+      <!-- Scoreboard: both players + session wins -->
+      <div class="go-scoreboard" id="goScoreboard"></div>
+
+      <!-- Rating / streak stats (arrive via stats_update) -->
       <div class="go-stats" id="statsRow"></div>
 
+      <!-- Full word chain -->
       <div class="go-chain-wrap">
         <p class="go-chain-label">Word chain</p>
         <div class="history-chain go-chain" id="finalChain"></div>
       </div>
 
-      <div class="go-actions">
-        <button class="btn-primary" id="btnRematch">Rematch</button>
-        <button class="btn-ghost"   id="btnShareResult">Share</button>
-        <a href="/" class="btn-ghost">Home</a>
-      </div>
+      <!-- Primary action -->
+      <button class="btn-primary go-play-again" id="btnRematch">Play Again</button>
       <p class="rematch-status hidden" id="rematchStatus"></p>
+
+      <!-- Secondary actions -->
+      <div class="go-secondary">
+        <a href="/" class="btn-ghost">New Game</a>
+        <button class="btn-ghost" id="btnShareResult">Share</button>
+      </div>
+
     </div>
   </div>
 

@@ -84,7 +84,7 @@ function finishGame(room, loserId, reason) {
     console.error('[stats]', e.message);
   }
 
-  io.to(room.roomId).emit('game_over', result);
+  io.to(room.roomId).emit('game_over', { ...result, scores: room.scores });
   scheduleCleanup(room.roomId);
 }
 
