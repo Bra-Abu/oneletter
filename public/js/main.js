@@ -178,6 +178,16 @@ socket.on('disconnect', () => {
   }
 });
 
+socket.on('connect', () => {
+  // If the waiting overlay is visible, the socket reconnected while queuing —
+  // re-join the queue automatically so matching still works.
+  if (!waitingOverlay.classList.contains('hidden')) {
+    if (queueSub) queueSub.textContent = 'Looking for someone to play with…';
+    socket.emit('join_random', { name: getName(), token: MY_TOKEN });
+    startQueueTimer();
+  }
+});
+
 socket.on('join_error', ({ message }) => {
   joinError.textContent = message;
   joinError.classList.remove('hidden');
