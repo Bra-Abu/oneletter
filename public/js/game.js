@@ -568,7 +568,7 @@ function showGameOver(result) {
 
   btnShareResult.addEventListener('click', () => {
     const n    = (result.wordHistory?.length || 1) - 1;
-    const text = `OneLetter — we built a ${n}-word chain! Play at ${location.origin}`;
+    const text = `OneLetter — we built a ${n}-word chain! Play at https://1letter.world`;
     const fallback = () => navigator.clipboard.writeText(text).then(() => {
       btnShareResult.textContent = '✓ Copied!';
       setTimeout(() => { btnShareResult.textContent = 'Share'; }, 2000);
