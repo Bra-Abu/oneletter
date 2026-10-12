@@ -136,8 +136,16 @@ btnGameCopyLink?.addEventListener('click', () => {
 
 // ── Socket events ──────────────────────────────────────────────────────────
 socket.on('sync_error', ({ message }) => {
-  connectingState.querySelector('p').textContent = message;
-  connectingState.querySelector('.spinner').style.display = 'none';
+  connectingState.innerHTML = `
+    <div style="text-align:center;display:flex;flex-direction:column;align-items:center;gap:16px;">
+      <div style="font-size:2.4rem">🔌</div>
+      <p style="color:var(--text);font-weight:700;font-size:1.05rem;">Game not found</p>
+      <p style="color:var(--muted);font-size:.85rem;max-width:260px;line-height:1.6;">
+        This game has expired or the server restarted.<br>Start a fresh game below.
+      </p>
+      <a href="/" class="btn-primary" style="text-decoration:none;padding:12px 28px;">Back to Home</a>
+    </div>
+  `;
 });
 
 socket.on('host_waiting', ({ roomId: rid }) => {
