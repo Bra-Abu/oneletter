@@ -152,3 +152,60 @@ socket.on('join_error', ({ message }) => {
 socket.on('error', ({ message }) => {
   alert(message);
 });
+
+// ── Demo tile animation ───────────────────────────────────────────────────
+const DEMO_CHAIN = [
+  'GAME','CAME','COME','CONE','BONE','BORE','CORE','CARE',
+  'DARE','DALE','TALE','PALE','PAGE','CAGE','CAVE','GAVE',
+];
+const MAX_TRAIL = 5;
+let demoIdx  = 0;
+let trail    = ['GAME'];
+const tileEls  = document.querySelectorAll('#demoTiles .demo-tile');
+const chainEl  = document.getElementById('demoChain');
+
+function renderTrail() {
+  chainEl.innerHTML = '';
+  trail.forEach((word, i) => {
+    if (i > 0) {
+      const arr = document.createElement('span');
+      arr.className = 'demo-chain-arrow'; arr.textContent = '›';
+      chainEl.appendChild(arr);
+    }
+    const el = document.createElement('span');
+    el.className = 'demo-chain-word' + (i === trail.length - 1 ? ' active' : '');
+    el.textContent = word;
+    chainEl.appendChild(el);
+  });
+}
+
+function stepDemo() {
+  const prev = DEMO_CHAIN[demoIdx];
+  demoIdx = (demoIdx + 1) % DEMO_CHAIN.length;
+  const next = DEMO_CHAIN[demoIdx];
+
+  let changedIdx = -1;
+  for (let i = 0; i < prev.length; i++) {
+    if (prev[i] !== next[i]) { changedIdx = i; break; }
+  }
+
+  tileEls.forEach((tile, i) => {
+    if (i === changedIdx) {
+      tile.classList.remove('flip');
+      void tile.offsetWidth;
+      tile.classList.add('flip');
+      tile.textContent = next[i];
+      setTimeout(() => tile.classList.remove('flip'), 700);
+    } else {
+      tile.textContent = next[i];
+    }
+  });
+
+  // Update trail — keep last MAX_TRAIL words
+  if (trail.length >= MAX_TRAIL) trail.shift();
+  trail.push(next);
+  renderTrail();
+}
+
+renderTrail();
+setInterval(stepDemo, 2000);
