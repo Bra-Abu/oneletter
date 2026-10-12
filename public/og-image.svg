@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630">
+  <!-- Background -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0b0f1a"/>
+      <stop offset="100%" stop-color="#141926"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+
+  <!-- Subtle grid dots -->
+  <pattern id="dots" x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse">
+    <circle cx="20" cy="20" r="1" fill="#2a3450" opacity=".6"/>
+  </pattern>
+  <rect width="1200" height="630" fill="url(#dots)"/>
+
+  <!-- Logo tiles -->
+  <rect x="448" y="170" width="120" height="140" rx="14" fill="#1e2639" stroke="#2a3450" stroke-width="2"/>
+  <text x="508" y="263" text-anchor="middle" font-family="system-ui,sans-serif" font-weight="900" font-size="80" fill="#f1f5f9">O</text>
+
+  <rect x="586" y="170" width="120" height="140" rx="14" fill="#38bdf8"/>
+  <text x="646" y="263" text-anchor="middle" font-family="system-ui,sans-serif" font-weight="900" font-size="80" fill="#0b0f1a">L</text>
+
+  <!-- Title -->
+  <text x="600" y="380" text-anchor="middle" font-family="system-ui,sans-serif" font-weight="900" font-size="68" fill="#f1f5f9">OneLetter</text>
+
+  <!-- Tagline -->
+  <text x="600" y="448" text-anchor="middle" font-family="system-ui,sans-serif" font-weight="400" font-size="28" fill="#64748b">Change one letter at a time. Race your opponent.</text>
+
+  <!-- Domain -->
+  <text x="600" y="560" text-anchor="middle" font-family="system-ui,sans-serif" font-weight="600" font-size="24" fill="#38bdf8">1letter.world</text>
+</svg>

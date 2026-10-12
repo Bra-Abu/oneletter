@@ -967,3 +967,45 @@ body {
   .demo-tile { width: 72px; height: 78px; font-size: 1.9rem; }
   .hero-inner { gap: 28px; }
 }
+
+/* ── Give Up confirm modal ────────────────────────────────────────── */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(11,15,26,.75);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 200;
+  backdrop-filter: blur(4px);
+}
+.modal-box {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: 16px;
+  padding: 2rem 1.75rem;
+  max-width: 300px; width: 90%;
+  text-align: center;
+  animation: popup .18s ease;
+}
+.modal-title {
+  font-family: var(--font-disp);
+  font-size: 1.2rem; font-weight: 700;
+  margin-bottom: .4rem;
+}
+.modal-sub {
+  font-size: .85rem; color: var(--muted);
+  margin-bottom: 1.5rem;
+}
+.modal-btns {
+  display: flex; gap: .75rem; justify-content: center;
+}
+.btn-danger {
+  padding: 10px 20px;
+  border-radius: var(--radius);
+  font-family: var(--font);
+  font-size: .9rem; font-weight: 600;
+  cursor: pointer;
+  background: var(--red);
+  border: none; color: #fff;
+  transition: background .18s, transform .1s;
+}
+.btn-danger:hover  { background: #dc2626; }
+.btn-danger:active { transform: scale(.97); }

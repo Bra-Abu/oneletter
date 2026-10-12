@@ -3,7 +3,23 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
-  <title>OneLetter</title>
+  <title>OneLetter — Multiplayer Word Game</title>
+
+  <!-- Favicon -->
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+
+  <!-- OG / Social sharing -->
+  <meta property="og:site_name"   content="OneLetter" />
+  <meta property="og:type"        content="website" />
+  <meta property="og:url"         content="https://1letter.world" />
+  <meta property="og:title"       content="OneLetter — Multiplayer Word Game" />
+  <meta property="og:description" content="Change one letter at a time. Race your opponent. Don't get stuck. Free to play!" />
+  <meta property="og:image"       content="https://1letter.world/og-image.svg" />
+  <meta name="twitter:card"        content="summary_large_image" />
+  <meta name="twitter:title"       content="OneLetter — Multiplayer Word Game" />
+  <meta name="twitter:description" content="Change one letter at a time. Race your opponent. Don't get stuck." />
+  <meta name="twitter:image"       content="https://1letter.world/og-image.svg" />
+
   <link rel="stylesheet" href="/css/style.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@700;800&display=swap" rel="stylesheet" />
@@ -148,6 +164,18 @@
         <button class="btn-ghost" id="btnShareResult">Share</button>
       </div>
 
+    </div>
+  </div>
+
+  <!-- ── GIVE UP CONFIRM MODAL ─────────────────────────────────────────── -->
+  <div id="giveUpModal" class="modal-overlay hidden">
+    <div class="modal-box">
+      <p class="modal-title">Give up?</p>
+      <p class="modal-sub">Your opponent wins the round.</p>
+      <div class="modal-btns">
+        <button class="btn-ghost" id="btnGiveUpCancel">Keep Playing</button>
+        <button class="btn-danger" id="btnGiveUpConfirm">Give Up</button>
+      </div>
     </div>
   </div>
 

@@ -564,8 +564,19 @@ function tick(endsAt) {
 }
 
 // ── Controls ───────────────────────────────────────────────────────────────
+const giveUpModal      = document.getElementById('giveUpModal');
+const btnGiveUpCancel  = document.getElementById('btnGiveUpCancel');
+const btnGiveUpConfirm = document.getElementById('btnGiveUpConfirm');
+
 btnGiveUp.addEventListener('click', () => {
-  if (confirm('Give up this game?')) socket.emit('give_up');
+  giveUpModal.classList.remove('hidden');
+});
+btnGiveUpCancel.addEventListener('click', () => {
+  giveUpModal.classList.add('hidden');
+});
+btnGiveUpConfirm.addEventListener('click', () => {
+  giveUpModal.classList.add('hidden');
+  socket.emit('give_up');
 });
 
 // ── Rematch ────────────────────────────────────────────────────────────────
