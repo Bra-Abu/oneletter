@@ -969,13 +969,6 @@ body {
 }
 
 /* ── Leaderboard page ─────────────────────────────────────────────── */
-.lb-home-link {
-  display: block; text-align: center;
-  color: var(--muted); font-size: .85rem; font-weight: 500;
-  text-decoration: none; margin-top: 12px;
-  transition: color .15s;
-}
-.lb-home-link:hover { color: var(--electric-blue); }
 
 .lb-page {
   min-height: 100vh;
@@ -1049,16 +1042,17 @@ body {
 /* ── How to Play modal ────────────────────────────────────────────── */
 .home-footer-links {
   display: flex; align-items: center; justify-content: center;
-  gap: 10px; margin-top: 12px;
+  gap: 10px; margin-top: 12px; flex-wrap: wrap;
 }
 .home-footer-sep { color: var(--border); font-size: .85rem; }
-.htp-trigger {
-  background: none; border: none;
+.footer-link {
+  background: none; border: none; padding: 0;
   color: var(--muted); font-size: .85rem; font-weight: 500;
   cursor: pointer; font-family: var(--font);
-  transition: color .15s; padding: 0;
+  text-decoration: none;
+  transition: color .15s;
 }
-.htp-trigger:hover { color: var(--text); }
+.footer-link:hover { color: var(--text); }
 .htp-box { max-width: 360px; }
 .htp-example {
   display: flex; align-items: center;
