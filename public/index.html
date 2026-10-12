@@ -94,7 +94,39 @@
         </button>
       </div>
 
-      <a href="/leaderboard" class="lb-home-link">🏆 Leaderboard</a>
+      <div class="home-footer-links">
+        <a href="/leaderboard" class="lb-home-link">🏆 Leaderboard</a>
+        <span class="home-footer-sep">·</span>
+        <button class="htp-trigger" id="btnHowToPlay">How to play?</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- HOW TO PLAY MODAL -->
+  <div id="htpModal" class="overlay hidden">
+    <div class="overlay-box htp-box">
+      <h2 class="overlay-title">How to Play</h2>
+
+      <div class="htp-example">
+        <div class="htp-tiles">
+          <span class="htp-tile">G</span><span class="htp-tile">A</span><span class="htp-tile">M</span><span class="htp-tile">E</span>
+        </div>
+        <span class="htp-arrow">→</span>
+        <div class="htp-tiles">
+          <span class="htp-tile htp-changed">C</span><span class="htp-tile">A</span><span class="htp-tile">M</span><span class="htp-tile">E</span>
+        </div>
+      </div>
+
+      <ul class="htp-rules">
+        <li>Change <strong>exactly one letter</strong> per turn</li>
+        <li>The new word must be a <strong>real 4-letter word</strong></li>
+        <li>You <strong>can't reuse</strong> a word already played</li>
+        <li>You have <strong>10 seconds</strong> — don't run out!</li>
+      </ul>
+
+      <p class="htp-note">Get stuck or run out of time and you <strong>lose</strong>.</p>
+
+      <button class="btn-primary htp-close-btn" id="btnHtpClose">Got it!</button>
     </div>
   </div>
 

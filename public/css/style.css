@@ -1046,6 +1046,63 @@ body {
 }
 .lb-me .lb-name-cell { color: var(--accent-h); }
 
+/* ── How to Play modal ────────────────────────────────────────────── */
+.home-footer-links {
+  display: flex; align-items: center; justify-content: center;
+  gap: 10px; margin-top: 12px;
+}
+.home-footer-sep { color: var(--border); font-size: .85rem; }
+.htp-trigger {
+  background: none; border: none;
+  color: var(--muted); font-size: .85rem; font-weight: 500;
+  cursor: pointer; font-family: var(--font);
+  transition: color .15s; padding: 0;
+}
+.htp-trigger:hover { color: var(--text); }
+.htp-box { max-width: 360px; }
+.htp-example {
+  display: flex; align-items: center;
+  justify-content: center; gap: 14px;
+  margin: 20px 0;
+}
+.htp-tiles { display: flex; gap: 5px; }
+.htp-tile {
+  width: 38px; height: 44px;
+  background: var(--surface2);
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-disp);
+  font-weight: 800; font-size: 1.1rem;
+}
+.htp-changed {
+  background: var(--electric-blue);
+  border-color: var(--electric-blue);
+  color: #0b0f1a;
+}
+.htp-arrow { font-size: 1.4rem; color: var(--muted); }
+.htp-rules {
+  list-style: none; text-align: left;
+  font-size: .88rem;
+  display: flex; flex-direction: column; gap: 10px;
+  margin-bottom: 16px;
+}
+.htp-rules li {
+  padding-left: 20px; position: relative;
+  color: var(--muted); line-height: 1.5;
+}
+.htp-rules li::before {
+  content: '✦'; position: absolute; left: 0;
+  color: var(--accent); font-size: .65rem; top: 3px;
+}
+.htp-rules li strong { color: var(--text); }
+.htp-note {
+  font-size: .82rem; color: var(--muted);
+  margin-bottom: 20px; text-align: center; line-height: 1.5;
+}
+.htp-note strong { color: var(--text); }
+.htp-close-btn { width: 100%; }
+
 /* ── Give Up confirm modal ────────────────────────────────────────── */
 .modal-overlay {
   position: fixed; inset: 0;

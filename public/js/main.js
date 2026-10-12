@@ -221,6 +221,23 @@ refreshOnlineCount();
 loadPlayerStats();
 setInterval(refreshOnlineCount, 20000);
 
+// ── How to play modal ─────────────────────────────────────────────────────
+const htpModal    = document.getElementById('htpModal');
+const btnHtp      = document.getElementById('btnHowToPlay');
+const btnHtpClose = document.getElementById('btnHtpClose');
+
+function openHtp()  { htpModal.classList.remove('hidden'); }
+function closeHtp() {
+  htpModal.classList.add('hidden');
+  try { localStorage.setItem('ol_htp_seen', '1'); } catch {}
+}
+
+btnHtp.addEventListener('click', openHtp);
+btnHtpClose.addEventListener('click', closeHtp);
+htpModal.addEventListener('click', e => { if (e.target === htpModal) closeHtp(); });
+
+try { if (!localStorage.getItem('ol_htp_seen')) openHtp(); } catch {}
+
 // ── Demo tile animation ───────────────────────────────────────────────────
 const DEMO_CHAIN = [
   'GAME','CAME','COME','CONE','BONE','BORE','CORE','CARE',
