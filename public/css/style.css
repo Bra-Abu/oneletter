@@ -1036,6 +1036,18 @@ body {
   text-align: center; font-size: .82rem;
   color: var(--muted); margin-top: 16px;
 }
+.lb-section { margin-bottom: 40px; }
+.lb-section-head {
+  display: flex; align-items: center; gap: 12px;
+  margin-bottom: 14px;
+}
+.lb-section-icon { font-size: 1.5rem; line-height: 1; }
+.lb-section-title {
+  font-family: var(--font-disp);
+  font-size: 1.1rem; font-weight: 700;
+}
+.lb-section-sub { font-size: .75rem; color: var(--muted); margin-top: 2px; }
+.lb-chain-val { color: var(--electric-blue); font-weight: 700; }
 .lb-table-wrap {
   overflow-x: auto;
   border-radius: var(--radius);

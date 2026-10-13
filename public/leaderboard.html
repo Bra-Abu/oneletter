@@ -5,8 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Leaderboard — OneLetter</title>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="theme-color" content="#0b0f1a" />
   <meta property="og:title"       content="OneLetter Leaderboard" />
-  <meta property="og:description" content="Top OneLetter players ranked by Elo rating." />
+  <meta property="og:description" content="Top OneLetter players ranked by Elo rating and longest chain." />
   <meta property="og:image"       content="https://1letter.world/og-image.svg" />
   <link rel="stylesheet" href="/css/style.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -21,7 +23,6 @@
 
       <div class="lb-header">
         <h1 class="lb-title">Leaderboard</h1>
-        <p class="lb-sub">Ranked by Elo rating &middot; Minimum 3 wins required</p>
       </div>
 
       <div id="lbContent">
@@ -39,61 +40,73 @@
     const MEDALS = ['🥇', '🥈', '🥉'];
 
     function escHtml(s) {
-      return String(s)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;');
+      return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    function buildTable(rows, columns) {
+      if (!rows.length) return null;
+      let html = '<div class="lb-table-wrap"><table class="lb-table"><thead><tr>';
+      columns.forEach(c => {
+        html += `<th class="${c.cls || ''}">${c.label}</th>`;
+      });
+      html += '</tr></thead><tbody>';
+      rows.forEach((row, i) => {
+        const isMe = row.token === MY_TOKEN;
+        const badge = MEDALS[i] !== undefined ? MEDALS[i] : (i + 1);
+        html += `<tr class="${isMe ? 'lb-me' : ''}">`;
+        html += `<td class="lb-col-rank">${badge}</td>`;
+        html += `<td class="lb-name-cell">${escHtml(row.name)}${isMe ? ' <span class="you-badge">YOU</span>' : ''}</td>`;
+        columns.slice(2).forEach(c => { html += `<td class="lb-col-num ${c.cls2 || ''}">${c.render(row)}</td>`; });
+        html += '</tr>';
+      });
+      html += '</tbody></table></div>';
+      return html;
+    }
+
+    function section(icon, title, sub, tableHtml, emptyMsg, myInTop) {
+      return `
+        <div class="lb-section">
+          <div class="lb-section-head">
+            <span class="lb-section-icon">${icon}</span>
+            <div>
+              <div class="lb-section-title">${title}</div>
+              <div class="lb-section-sub">${sub}</div>
+            </div>
+          </div>
+          ${tableHtml || `<p class="lb-empty" style="padding:24px 0">${emptyMsg}</p>`}
+          ${(!myInTop && tableHtml) ? '<p class="lb-not-ranked">You\'re not ranked here yet — keep playing!</p>' : ''}
+        </div>`;
     }
 
     async function loadLeaderboard() {
       const el = document.getElementById('lbContent');
       try {
-        const rows = await fetch('/api/leaderboard').then(r => r.json());
+        const [pvp, chains] = await Promise.all([
+          fetch('/api/leaderboard').then(r => r.json()),
+          fetch('/api/leaderboard/chains').then(r => r.json()),
+        ]);
 
-        if (!rows.length) {
-          el.innerHTML = `
-            <div class="lb-empty">
-              <div class="lb-empty-icon">🏆</div>
-              <p>No ranked players yet.</p>
-              <p class="lb-empty-sub">Play 3+ PvP games to appear here.</p>
-              <a href="/" class="btn-primary" style="display:inline-block;margin-top:20px;text-decoration:none">Play Now</a>
-            </div>`;
-          return;
-        }
+        const pvpTable = buildTable(pvp, [
+          { label: '#',           cls: 'lb-col-rank' },
+          { label: 'Player' },
+          { label: 'Rating',      cls2: 'lb-rating', render: r => r.rating },
+          { label: 'Wins',        render: r => r.wins },
+          { label: 'Best Streak', render: r => r.best_streak > 0 ? '🔥 ' + r.best_streak : r.best_streak },
+        ]);
 
-        let myInTop = rows.some(r => r.token === MY_TOKEN);
-        let html = '<div class="lb-table-wrap"><table class="lb-table">';
-        html += `<thead><tr>
-          <th class="lb-col-rank">#</th>
-          <th>Player</th>
-          <th class="lb-col-num">Rating</th>
-          <th class="lb-col-num">Wins</th>
-          <th class="lb-col-num">Best Streak</th>
-        </tr></thead><tbody>`;
+        const chainTable = buildTable(chains, [
+          { label: '#',           cls: 'lb-col-rank' },
+          { label: 'Player' },
+          { label: 'Best Chain',  cls2: 'lb-chain-val', render: r => r.best_chain + ' rounds' },
+          { label: 'Wins',        render: r => r.wins },
+        ]);
 
-        rows.forEach((row, i) => {
-          const isMe = row.token === MY_TOKEN;
-          const rank = i + 1;
-          const badge = MEDALS[i] !== undefined ? MEDALS[i] : rank;
-          html += `<tr class="${isMe ? 'lb-me' : ''}">
-            <td class="lb-col-rank">${badge}</td>
-            <td class="lb-name-cell">
-              ${escHtml(row.name)}
-              ${isMe ? '<span class="you-badge">YOU</span>' : ''}
-            </td>
-            <td class="lb-col-num lb-rating">${row.rating}</td>
-            <td class="lb-col-num">${row.wins}</td>
-            <td class="lb-col-num">${row.best_streak > 0 ? '🔥 ' + row.best_streak : row.best_streak}</td>
-          </tr>`;
-        });
+        el.innerHTML =
+          section('🏆', 'PvP Rankings', 'Ranked by Elo · Min. 3 wins',
+            pvpTable, 'No ranked players yet. Win 3+ PvP games to appear here.', pvp.some(r => r.token === MY_TOKEN)) +
+          section('🔗', 'Longest Chain', 'Most rounds survived — includes vs Tuff',
+            chainTable, 'No chains recorded yet. Play a game to appear here!', chains.some(r => r.token === MY_TOKEN));
 
-        html += '</tbody></table></div>';
-
-        if (!myInTop) {
-          html += `<p class="lb-not-ranked">You're not in the top 20 yet — keep playing!</p>`;
-        }
-
-        el.innerHTML = html;
       } catch {
         el.innerHTML = '<p class="lb-empty">Could not load leaderboard. Try refreshing.</p>';
       }

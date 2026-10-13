@@ -166,4 +166,15 @@ function getLeaderboard() {
   try { return _getLeaderboard.all(); } catch { return []; }
 }
 
-module.exports = { saveMatch, updateStats, getPlayerStats, getLeaderboard };
+const _getTopChains = db.prepare(
+  `SELECT token, name, best_chain, wins, losses
+   FROM players
+   WHERE best_chain >= 3
+   ORDER BY best_chain DESC
+   LIMIT 20`
+);
+function getTopChains() {
+  try { return _getTopChains.all(); } catch { return []; }
+}
+
+module.exports = { saveMatch, updateStats, getPlayerStats, getLeaderboard, getTopChains };

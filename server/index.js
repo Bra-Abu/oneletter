@@ -5,7 +5,7 @@ const { v4: uuidv4 } = require('uuid');
 const path = require('path');
 const { loadWords, getNeighbours } = require('./words');
 const { GameRoom, TURN_MS } = require('./game');
-const { saveMatch, updateStats, getPlayerStats, getLeaderboard } = require('./db');
+const { saveMatch, updateStats, getPlayerStats, getLeaderboard, getTopChains } = require('./db');
 
 loadWords();
 
@@ -32,6 +32,11 @@ app.get('/api/stats', (req, res) => {
 app.get('/api/leaderboard', (req, res) => {
   if (!httpRL(req, res, 30, 60000)) return;
   res.json(getLeaderboard());
+});
+
+app.get('/api/leaderboard/chains', (req, res) => {
+  if (!httpRL(req, res, 30, 60000)) return;
+  res.json(getTopChains());
 });
 
 app.get('/api/room/:roomId', (req, res) => {
