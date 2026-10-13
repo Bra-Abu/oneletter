@@ -35,6 +35,7 @@ let soundEnabled     = (() => { try { return localStorage.getItem('ol_sound') !=
 const TURN_SECS        = 10;
 const RING_CIRC        = 188.5; // 2π × 30
 const BOT_NAME         = 'Tuff';
+const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 
 // ── Audio ──────────────────────────────────────────────────────────────────
 let audioCtx = null;
@@ -100,6 +101,7 @@ const resultReason     = $('resultReason');
 const statsRow         = $('statsRow');
 const finalChain       = $('finalChain');
 const goScoreboard     = $('goScoreboard');
+const goPrize          = $('goPrize');
 const btnShareResult   = $('btnShareResult');
 const btnRematch       = $('btnRematch');
 const rematchStatus    = $('rematchStatus');
@@ -646,6 +648,20 @@ function showGameOver(result) {
       <div class="go-sb-name">${p1?.name || '—'}</div>
     </div>
   `;
+
+  // Prize announcement
+  if (goPrize) {
+    const prize = result.prize;
+    if (prize) {
+      const iWon = result.winnerName === savedName;
+      goPrize.innerHTML = iWon
+        ? `🏆 You win <strong>${esc(prize)}</strong>!`
+        : `🏆 <strong>${esc(result.winnerName)}</strong> wins <strong>${esc(prize)}</strong>`;
+      goPrize.classList.remove('hidden');
+    } else {
+      goPrize.classList.add('hidden');
+    }
+  }
 
   // Rounds played
   const rounds = result.wordHistory?.length || 0;

@@ -94,11 +94,30 @@ btnCancelQueue.addEventListener('click', () => {
   clearQueueTimer();
 });
 
-// ── Create private game ──────────────────────────────────────────────────
+// ── Create private game (with optional prize) ────────────────────────────
+const prizeModal      = document.getElementById('prizeModal');
+const prizeInput      = document.getElementById('prizeInput');
+const btnCancelPrize  = document.getElementById('btnCancelPrize');
+const btnConfirmCreate = document.getElementById('btnConfirmCreate');
+
 btnCreate.addEventListener('click', () => {
   saveName(getName());
-  socket.emit('create_game', { name: getName(), token: MY_TOKEN });
+  prizeInput.value = '';
+  prizeModal.classList.remove('hidden');
+  setTimeout(() => prizeInput.focus(), 50);
 });
+
+btnCancelPrize.addEventListener('click', () => {
+  prizeModal.classList.add('hidden');
+});
+
+btnConfirmCreate.addEventListener('click', () => {
+  prizeModal.classList.add('hidden');
+  const prize = prizeInput.value.trim();
+  socket.emit('create_game', { name: getName(), token: MY_TOKEN, prize });
+});
+
+prizeInput.addEventListener('keydown', e => { if (e.key === 'Enter') btnConfirmCreate.click(); });
 
 btnCancelCreate.addEventListener('click', () => {
   createOverlay.classList.add('hidden');
@@ -143,6 +162,20 @@ if (urlRoom) {
   joinNameInput.value = loadName();
   joinOverlay.classList.remove('hidden');
   joinNameInput.focus();
+
+  // Fetch and show prize if this room has one
+  fetch(`/api/room/${encodeURIComponent(urlRoom)}`)
+    .then(r => r.json())
+    .then(data => {
+      if (data?.prize) {
+        const banner = document.getElementById('joinPrizeBanner');
+        const text   = document.getElementById('joinPrizeText');
+        if (banner && text) {
+          text.textContent = data.prize;
+          banner.classList.remove('hidden');
+        }
+      }
+    }).catch(() => {});
 }
 
 // ── Socket events ─────────────────────────────────────────────────────────

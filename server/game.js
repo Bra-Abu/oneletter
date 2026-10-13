@@ -21,6 +21,7 @@ class GameRoom {
     this.roomId   = roomId;
     this.players  = [{ id: p1Id, name: p1Name }];
     this.isBot    = false;
+    this.prize    = null;
     this.scores   = [0, 0]; // session wins per player index, persist across rematches
     this._initMatchState();
     this.state    = 'waiting';
@@ -131,6 +132,7 @@ class GameRoom {
       timerRemaining:   this.timerEndsAt ? Math.max(0, this.timerEndsAt - Date.now()) : TURN_MS,
       isBot:            this.isBot,
       scores:           this.scores,
+      prize:            this.prize || null,
     };
   }
 }

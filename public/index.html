@@ -147,6 +147,9 @@
   <div id="joinOverlay" class="overlay hidden">
     <div class="overlay-box">
       <p class="overlay-title">Join a Game</p>
+      <div class="prize-banner hidden" id="joinPrizeBanner">
+        🏆 Playing for: <strong id="joinPrizeText"></strong>
+      </div>
       <input id="joinNameInput" class="input-field" type="text" maxlength="20"
              placeholder="Your name (optional)" autocomplete="off" />
       <input id="joinCodeInput" class="input-field large" type="text" maxlength="8"
@@ -155,6 +158,20 @@
       <div class="join-buttons">
         <button class="btn-ghost" id="btnCancelJoin">Cancel</button>
         <button class="btn-primary" id="btnConfirmJoin">Join</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CREATE GAME WITH PRIZE MODAL -->
+  <div id="prizeModal" class="overlay hidden">
+    <div class="overlay-box">
+      <p class="overlay-title">Create Game</p>
+      <input id="prizeInput" class="input-field" type="text" maxlength="60"
+             placeholder="Prize, e.g. GHS 20 MoMo, Airtime, Lunch…" autocomplete="off" />
+      <p class="overlay-sub">Leave blank for a casual game</p>
+      <div class="join-buttons">
+        <button class="btn-ghost" id="btnCancelPrize">Cancel</button>
+        <button class="btn-primary" id="btnConfirmCreate">🔗 Create &amp; Share</button>
       </div>
     </div>
   </div>

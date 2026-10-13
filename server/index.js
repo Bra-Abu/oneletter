@@ -34,6 +34,13 @@ app.get('/api/leaderboard', (req, res) => {
   res.json(getLeaderboard());
 });
 
+app.get('/api/room/:roomId', (req, res) => {
+  if (!httpRL(req, res, 60, 60000)) return;
+  const room = games.get(req.params.roomId.toUpperCase());
+  if (!room) return res.json({ prize: null });
+  res.json({ prize: room.prize || null });
+});
+
 app.get('/leaderboard', (req, res) =>
   res.sendFile(path.join(__dirname, '../public/leaderboard.html')));
 
@@ -137,7 +144,7 @@ function finishGame(room, loserId, reason) {
     console.error('[stats]', e.message);
   }
 
-  io.to(room.roomId).emit('game_over', { ...result, scores: room.scores });
+  io.to(room.roomId).emit('game_over', { ...result, scores: room.scores, prize: room.prize || null });
   scheduleCleanup(room.roomId);
 }
 
@@ -248,15 +255,17 @@ io.on('connection', (socket) => {
   });
 
   // ── Private game ──────────────────────────────────────────────────────
-  socket.on('create_game', ({ name, token }) => {
+  socket.on('create_game', ({ name, token, prize }) => {
     if (!socketRL(socket, 'create_game', 5, 60000)) return;
     name  = (name  || 'Anonymous').slice(0, 20);
     token = (token || uuidv4()).slice(0, 36);
+    prize = (prize || '').slice(0, 60);
     socket.data.token = token;
     if (isInActiveGame(socket.id)) return;
 
     const roomId = uuidv4().slice(0, 8).toUpperCase();
     const room = makeRoom(roomId, socket.id, name, token);
+    if (prize) room.prize = prize;
     games.set(roomId, room);
     socket.join(roomId);
     socket.data.roomId = roomId;
